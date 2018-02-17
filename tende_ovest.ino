@@ -19,6 +19,10 @@
 #include <ESP8266WiFi.h>
 #include <PubSubClient.h>
 #include <EEPROM.h>
+#include <WiFiClient.h>
+#include <ESP8266WebServer.h>
+#include <ESP8266mDNS.h>
+#include <ESP8266HTTPUpdateServer.h>
 
 #define wifi_ssid "comPVter-IoT"
 #define wifi_password "suprapluralcreeps"
@@ -61,6 +65,9 @@ int tSudPosition;
 
 int upSeconds;
 int downSeconds;
+
+ESP8266WebServer httpServer(80);
+ESP8266HTTPUpdateServer httpUpdater;
 
 int setNord(int position){
     Serial.println("SetNord");
@@ -133,16 +140,6 @@ int stopNord(){
     return newPosition;
 }
 
-int stopSud(){
-    digitalWrite(D6,LOW);
-    digitalWrite(D7,LOW);
-    tSudMoving = false;
-    int newPosition = whereInTheWorldIsTenda(tSudActBegin,tSudGoingUp,tSudPosition,topic_tende_status_sud);
-  EEPROM.write(1, newPosition);
-    EEPROM.commit();
-    return newPosition;
-}
-
 int whereInTheWorldIsTenda(unsigned long actBegin, bool goingUp, int tPosition, char *topic){
   unsigned long tTime = millis() - actBegin;
     int newPosition;
@@ -152,6 +149,16 @@ int whereInTheWorldIsTenda(unsigned long actBegin, bool goingUp, int tPosition, 
         newPosition = posValidator(tPosition + tTime/((downSeconds*1000)/100));
     }
     client.publish(topic, String(newPosition).c_str());
+    return newPosition;
+}
+
+int stopSud(){
+    digitalWrite(D6,LOW);
+    digitalWrite(D7,LOW);
+    tSudMoving = false;
+    int newPosition = whereInTheWorldIsTenda(tSudActBegin,tSudGoingUp,tSudPosition,topic_tende_status_sud);
+  EEPROM.write(1, newPosition);
+    EEPROM.commit();
     return newPosition;
 }
 
@@ -179,6 +186,7 @@ void setup_wifi(){
     Serial.println("///////////////// - WiFi - /////////////////");
     Serial.print("Connessione a ");
     Serial.println(wifi_ssid);
+    WiFi.mode(WIFI_STA);
     WiFi.begin(wifi_ssid, wifi_password);
     while(WiFi.status()!=WL_CONNECTED) {
         delay(500);
@@ -275,11 +283,13 @@ void setup(){
     pinMode(D2, OUTPUT);
     pinMode(D6, OUTPUT);
     pinMode(D7, OUTPUT);
+    pinMode(D8, OUTPUT);
     
     digitalWrite(D1, 0);
     digitalWrite(D2, 0);
     digitalWrite(D6, 0);
     digitalWrite(D7, 0);
+    digitalWrite(D8, 1);
 
     Serial.begin(115200);
     EEPROM.begin(10);
@@ -291,6 +301,9 @@ void setup(){
 
     upSeconds = EEPROM.read(2);
     downSeconds = EEPROM.read(3);
+
+    httpUpdater.setup(&httpServer);
+    httpServer.begin();
 }
 
 //loop ---------------------------------------------------------------------------------------|
@@ -300,6 +313,7 @@ void loop(){
         reconnect();
     }
     client.loop();
+    httpServer.handleClient();
 
     if (tNordMoving == true){
       if (millis()/1000 > oldMillisNord){
