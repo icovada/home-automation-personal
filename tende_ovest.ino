@@ -18,14 +18,12 @@
 
 #include <ESP8266WiFi.h>
 #include <PubSubClient.h>
-#include <OneWire.h>
-#include <DallasTemperature.h>
 #include <EEPROM.h>
 
-#define wifi_ssid "ssid"
-#define wifi_password "password"
+#define wifi_ssid "comPVter-IoT"
+#define wifi_password "suprapluralcreeps"
 
-#define mqtt_server "192.168.1.2"
+#define mqtt_server "172.17.0.120"
 #define mqtt_id "tendeovest"
 
 #define topic_tende_set_nord  "roncello/esterno/ovest/set/nord"
@@ -57,9 +55,6 @@ PubSubClient client(espClient);
 
 String sTopic;
 String sPayload;
-
-OneWire ds(D5); //pin D2     
-DallasTemperature DS18B20(&ds);
 
 int tNordPosition;
 int tSudPosition;
@@ -102,24 +97,24 @@ int setSud(int position){
     tSudActBegin = millis();
     tSudMoving = true;
     if (position == 100){
-        digitalWrite(D5,LOW);
-        digitalWrite(D6,HIGH);
+        digitalWrite(D6,LOW);
+        digitalWrite(D7,HIGH);
         tSudGoingUp = false;
         tSudTarget = millis() + downSeconds*1000 + 15000;
     } else if (position == 0){
-        digitalWrite(D5,HIGH);
-        digitalWrite(D6,LOW);
+        digitalWrite(D6,HIGH);
+        digitalWrite(D7,LOW);
         tSudGoingUp = true;
         tSudTarget = millis() + upSeconds*1000 + 15000;
     } else if (position > tSudPosition){
-        digitalWrite(D5,LOW);
-        digitalWrite(D6,HIGH);
+        digitalWrite(D6,LOW);
+        digitalWrite(D7,HIGH);
         tSudGoingUp = false;
         //Map position in 100 degrees to total seconds it takes
         tSudTarget = millis() + downSeconds*10*(position-tSudPosition);
     } else if (position < tSudPosition){
-        digitalWrite(D5,HIGH);
-        digitalWrite(D6,LOW);
+        digitalWrite(D6,HIGH);
+        digitalWrite(D7,LOW);
         tSudGoingUp = true;
         tSudTarget = millis() + upSeconds*10*(tSudPosition-position);
     }
@@ -132,24 +127,24 @@ int stopNord(){
     digitalWrite(D1,LOW);
     digitalWrite(D2,LOW);
     tNordMoving = false;
- 	int newPosition = whereInTheWorldIsTenda(tNordActBegin,tNordGoingUp,tNordPosition,topic_tende_status_nord);
+   int newPosition = whereInTheWorldIsTenda(tNordActBegin,tNordGoingUp,tNordPosition,topic_tende_status_nord);
     EEPROM.write(0, newPosition);
     EEPROM.commit();
     return newPosition;
 }
 
 int stopSud(){
-    digitalWrite(D5,LOW);
     digitalWrite(D6,LOW);
+    digitalWrite(D7,LOW);
     tSudMoving = false;
     int newPosition = whereInTheWorldIsTenda(tSudActBegin,tSudGoingUp,tSudPosition,topic_tende_status_sud);
-	EEPROM.write(1, newPosition);
+  EEPROM.write(1, newPosition);
     EEPROM.commit();
     return newPosition;
 }
 
 int whereInTheWorldIsTenda(unsigned long actBegin, bool goingUp, int tPosition, char *topic){
-	unsigned long tTime = millis() - actBegin;
+  unsigned long tTime = millis() - actBegin;
     int newPosition;
     if (goingUp == true){
         newPosition = posValidator(tPosition - tTime/((upSeconds*1000)/100));
@@ -174,14 +169,6 @@ void telecomando(){
     digitalWrite(D8, LOW);
     delay(1000);
     digitalWrite(D8, HIGH);
-}
-
-
-void readTemp(){
-    DS18B20.requestTemperatures();
-    if (DS18B20.getTempCByIndex(0) != 85){
-        client.publish("roncello/esterno/ovest/status/temperatura", String(DS18B20.getTempCByIndex(0)).c_str());
-    }
 }
 
 
@@ -243,60 +230,56 @@ void callback(char* topic, byte* payload, unsigned int length){
     Serial.println(String(sPayload));
 
 
-	if (sTopic == topic_tende_set_nord){
-	    if (tNordMoving){
-	     	tNordPosition = stopNord();
-	    }
-	    if (String(sPayload) != "STOP") {
-	        setNord(sPayload.toInt());
-		}
+  if (sTopic == topic_tende_set_nord){
+      if (tNordMoving){
+        tNordPosition = stopNord();
+      }
+      if (String(sPayload) != "STOP") {
+          setNord(sPayload.toInt());
+    }
     } else if (sTopic == topic_tende_set_sud){
-	    if (tSudMoving){
-	     	tSudPosition = stopSud();
-	    }
-	    if (String(sPayload) != "STOP") {
-	        setSud(sPayload.toInt());
-		}
+      if (tSudMoving){
+        tSudPosition = stopSud();
+      }
+      if (String(sPayload) != "STOP") {
+          setSud(sPayload.toInt());
+    }
     } else if (sTopic == topic_tende_set_group){
-	    if (tSudMoving){
-	     	tSudPosition = stopSud();
-	    }
-		if (tNordMoving){
-	     	tNordPosition = stopNord();
-	    }
-	    if (String(sPayload) != "STOP") {
-	        setSud(sPayload.toInt());
-	        setNord(sPayload.toInt());
-		}
+      if (tSudMoving){
+        tSudPosition = stopSud();
+      }
+    if (tNordMoving){
+        tNordPosition = stopNord();
+      }
+      if (String(sPayload) != "STOP") {
+          setSud(sPayload.toInt());
+          setNord(sPayload.toInt());
+    }
     } else if (sTopic == topic_telecomando_set){
         telecomando();
-    } else if (sTopic == "roncello/timer/1min"){
-        readTemp();
     } else if (sTopic == topic_upseconds_set){
-    	upSeconds = sPayload.toInt();
-    	EEPROM.write(2, sPayload.toInt());
-    	EEPROM.commit();
+      upSeconds = sPayload.toInt();
+      EEPROM.write(2, sPayload.toInt());
+      EEPROM.commit();
     } else if (sTopic == topic_downseconds_set){
-    	downSeconds = sPayload.toInt();
-    	EEPROM.write(3, sPayload.toInt());
-    	EEPROM.commit();
+      downSeconds = sPayload.toInt();
+      EEPROM.write(3, sPayload.toInt());
+      EEPROM.commit();
     }
 }
 
 
 //setup --------------------------------------------------------------------------------------|
 void setup(){
-    pinMode(D6, OUTPUT);
-    pinMode(D5, OUTPUT);
     pinMode(D1, OUTPUT);
     pinMode(D2, OUTPUT);
-    pinMode(D8, OUTPUT);
-
-    digitalWrite(D6, 0);
-    digitalWrite(D5, 0);
+    pinMode(D6, OUTPUT);
+    pinMode(D7, OUTPUT);
+    
     digitalWrite(D1, 0);
     digitalWrite(D2, 0);
-    digitalWrite(D8, 1);
+    digitalWrite(D6, 0);
+    digitalWrite(D7, 0);
 
     Serial.begin(115200);
     EEPROM.begin(10);
@@ -319,20 +302,20 @@ void loop(){
     client.loop();
 
     if (tNordMoving == true){
-    	if (millis()/1000 > oldMillisNord){
-    		whereInTheWorldIsTenda(tNordActBegin,tNordGoingUp,tNordPosition,topic_tende_status_nord);
-        	oldMillisNord = millis()/1000;
-    	}
+      if (millis()/1000 > oldMillisNord){
+        whereInTheWorldIsTenda(tNordActBegin,tNordGoingUp,tNordPosition,topic_tende_status_nord);
+          oldMillisNord = millis()/1000;
+      }
         if (millis() >= tNordTarget){
             tNordPosition = stopNord();
         }
     }
 
     if (tSudMoving == true){
-    	if (millis()/1000 > oldMillisSud){
-    		whereInTheWorldIsTenda(tSudActBegin,tSudGoingUp,tSudPosition,topic_tende_status_sud);
-        	oldMillisSud = millis()/1000;
-    	}
+      if (millis()/1000 > oldMillisSud){
+        whereInTheWorldIsTenda(tSudActBegin,tSudGoingUp,tSudPosition,topic_tende_status_sud);
+          oldMillisSud = millis()/1000;
+      }
         if (millis() >= tSudTarget){
             tSudPosition = stopSud();
         }
@@ -340,3 +323,4 @@ void loop(){
 
     delay(200);
 }
+
