@@ -24,8 +24,8 @@
 #include <ESP8266mDNS.h>
 #include <ESP8266HTTPUpdateServer.h>
 
-#define wifi_ssid "comPVter-IoT"
-#define wifi_password "suprapluralcreeps"
+#define wifi_ssid "wifi name"
+#define wifi_password "wifi password"
 
 #define mqtt_server "172.17.0.120"
 #define mqtt_id "tendeovest"
