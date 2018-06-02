@@ -29,6 +29,7 @@ bool pinSeiNew    = 0;
 bool pinSetteNew  = 0;
 
 int  lcdBrightness = 255;
+long lastReconnectAttempt = 0;
 
 EthernetClient ethClient;
 PubSubClient client;
@@ -132,45 +133,33 @@ bool physicalToggle(bool old, int pinNumber, String topic){
   return old;
  }
 
-void reconnect() {
+boolean reconnect() {
   // Loop until we're reconnected
-  while (!client.connected()) {
-    digitalWrite(13,LOW);
-    lcd.clear();
-    lcd.setCursor(0,0);
-    lcd.print("MQTT:");
+  if (client.connect("industruino")){
     lcd.setCursor(30,0);
-    lcd.print("Connecting...");
-    Serial.print("Attempting MQTT connection...");
-    // Attempt to connect
-    if (client.connect("industruino")) {
-      lcd.setCursor(30,0);
-      lcd.print("Connected    ");
-      Serial.println("connected");
-      client.subscribe(subscribed_topic);
-      client.subscribe(tempOvest);
-      client.subscribe(tempEst);
-      client.subscribe(topic_riscaldamento_set);
-      lcd.setCursor(0,2);
-      lcd.print("Est:          °c");
-      lcd.setCursor(0,3);
-      lcd.print("Ovest:        °c");
-      analogWrite(13,lcdBrightness);
-    } else {
-      Serial.print("failed, rc=");
-      Serial.print(client.state());
-      Serial.println(" try again in 5 seconds");
-      lcd.setCursor(30,0);
-      lcd.print("FAILED       ");
-      lcd.setCursor(0,2);
-      lcd.print("                ");
-      lcd.setCursor(0,3);
-      lcd.print("                ");
-      // Wait 5 seconds before retrying
-      delay(5000);
-    }
+    lcd.print("Connected    ");
+    Serial.println("connected");
+    client.subscribe(subscribed_topic);
+    client.subscribe(tempOvest);
+    client.subscribe(tempEst);
+    lcd.setCursor(0,2);
+    lcd.print("Est:          °c");
+    lcd.setCursor(0,3);
+    lcd.print("Ovest:        °c");
+    analogWrite(13,lcdBrightness);
+  } else {
+    Serial.print("failed, rc=");
+    Serial.print(client.state());
+    Serial.println(" try again in 10 seconds");
+    lcd.setCursor(30,0);
+    lcd.print("FAILED       ");
+    lcd.setCursor(0,2);
+    lcd.print("                ");
+    lcd.setCursor(0,3);
+    lcd.print("                ");
   }
 }
+
 
 void setup() {
   lcd.begin();
@@ -210,6 +199,7 @@ void setup() {
   client.setClient(ethClient);
   client.setServer(mqtt_server,1883);
   client.setCallback(callback);
+  lastReconnectAttempt = 0;
 
   pinCinque = Indio.digitalRead(5);
   pinSei =    Indio.digitalRead(6);
@@ -223,7 +213,23 @@ void setup() {
 
 void loop() {
   if (!client.connected()) {
-    reconnect();
+    long now = millis();
+    if (now - lastReconnectAttempt > 10000){
+      digitalWrite(13,LOW);
+      lcd.clear();
+      lcd.setCursor(0,0);
+      lcd.print("MQTT:");
+      lcd.setCursor(30,0);
+      lcd.print("Connecting...");
+      Serial.print("Attempting MQTT connection...");
+      lastReconnectAttempt = now;
+      // Attempt to connect
+      if (reconnect()){
+        lastReconnectAttempt = 0;
+      }
+    }
+  } else {
+    client.loop();
   }
   pinCinqueNew = Indio.digitalRead(5);
   pinSeiNew    = Indio.digitalRead(6);
