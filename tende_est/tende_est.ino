@@ -16,6 +16,15 @@
 //|_________________________________________________________________________________________|//
 //                                                                                           //
 
+
+// EEPROM data table
+// 0 tNordPosition
+// 1 tSudPosition
+// 2 tNordTarget
+// 3 tSudTarget
+// 4 upSeconds
+// 5 downSeconds
+
 #include <ESP8266WiFi.h>
 #include <PubSubClient.h>
 #include <EEPROM.h>
@@ -44,6 +53,7 @@ unsigned long tNordActBegin = 0;
 unsigned long tSudActBegin = 0;
 unsigned long tNordTarget = 0;
 unsigned long tSudTarget = 0;
+unsigned long lastMQTT = 0;
 bool tNordGoingUp = false;
 bool tSudGoingUp = false;
 bool tNordMoving = false;
@@ -95,6 +105,8 @@ int setNord(int position) {
   }
   Serial.print("Target: ");
   Serial.println(tNordTarget);
+  EEPROM.write(2, position);
+  EEPROM.commit();
 }
 
 int setSud(int position) {
@@ -125,6 +137,8 @@ int setSud(int position) {
   }
   Serial.print("Target: ");
   Serial.println(tSudTarget);
+  EEPROM.write(3, position);
+  EEPROM.commit();
 }
 
 int whereInTheWorldIsTenda(unsigned long actBegin, bool goingUp, int tPosition, char *topic) {
@@ -145,6 +159,7 @@ int stopNord() {
   tNordMoving = false;
   int newPosition = whereInTheWorldIsTenda(tNordActBegin, tNordGoingUp, tNordPosition, topic_tende_status_nord);
   EEPROM.write(0, newPosition);
+  EEPROM.write(2, newPosition);
   EEPROM.commit();
   return newPosition;
 }
@@ -155,6 +170,7 @@ int stopSud() {
   tSudMoving = false;
   int newPosition = whereInTheWorldIsTenda(tSudActBegin, tSudGoingUp, tSudPosition, topic_tende_status_sud);
   EEPROM.write(1, newPosition);
+  EEPROM.write(3, newPosition);
   EEPROM.commit();
   return newPosition;
 }
@@ -217,6 +233,7 @@ void callback(char* topic, byte* payload, unsigned int length) {
   sTopic = topic;
   sPayload = "";
 
+  lastMQTT = millis()
   Serial.print("Messaggio ricevuto [");
   Serial.print(topic);
   Serial.print("] ");
@@ -255,11 +272,11 @@ void callback(char* topic, byte* payload, unsigned int length) {
     }
   } else if (sTopic == topic_upseconds_set) {
     upSeconds = sPayload.toInt();
-    EEPROM.write(2, sPayload.toInt());
+    EEPROM.write(4, sPayload.toInt());
     EEPROM.commit();
   } else if (sTopic == topic_downseconds_set) {
     downSeconds = sPayload.toInt();
-    EEPROM.write(3, sPayload.toInt());
+    EEPROM.write(5, sPayload.toInt());
     EEPROM.commit();
   }
 }
@@ -285,12 +302,16 @@ void setup() {
   tNordPosition = int(EEPROM.read(0));
   tSudPosition = int(EEPROM.read(1));
 
-  upSeconds = EEPROM.read(2);
-  downSeconds = EEPROM.read(3);
+  tNordTarget = int(EEPROM.read(2));
+  tSudTarget = int(EEPROM.read(3));
+
+  upSeconds = EEPROM.read(4);
+  downSeconds = EEPROM.read(5);
 
   httpUpdater.setup(&httpServer);
   httpServer.begin();
 }
+
 
 //loop ---------------------------------------------------------------------------------------|
 void loop() {
@@ -320,7 +341,5 @@ void loop() {
       tSudPosition = stopSud();
     }
   }
-  Serial.print("Loop ");
   delay(200);
 }
-
