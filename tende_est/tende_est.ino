@@ -25,6 +25,9 @@
 // 4 upSeconds
 // 5 downSeconds
 
+// sketch upload command
+// curl -F "image=@tende_est.ino.bin" http://192.168.1.18/update -v
+
 #include <ESP8266WiFi.h>
 #include <PubSubClient.h>
 #include <EEPROM.h>
@@ -80,6 +83,7 @@ int setNord(int position) {
   Serial.println("SetNord");
   tNordActBegin = millis();
   tNordMoving = true;
+  oldMillisNord = 0;
   if (position == 100) {
     digitalWrite(D1, LOW);
     digitalWrite(D2, HIGH);
@@ -112,6 +116,7 @@ int setSud(int position) {
   Serial.println("SetSud");
   tSudActBegin = millis();
   tSudMoving = true;
+  oldMillisSud = 0;
   if (position == 100) {
     digitalWrite(D6, LOW);
     digitalWrite(D7, HIGH);
@@ -344,21 +349,21 @@ void loop() {
   httpServer.handleClient();
 
   if (tNordMoving == true) {
-    if ((millis() - tNordActBegin) < (tNordDuration * 1000)) {
+    if (millis() / 1000 > oldMillisNord) {
       whereInTheWorldIsTenda(tNordActBegin, tNordGoingUp, tNordPosition, topic_tende_status_nord);
       oldMillisNord = millis() / 1000;
     }
-    if (millis() >= tNordDuration) {
+    if ((millis() - tNordActBegin) > (tNordDuration * 1000)) {
       tNordPosition = stopNord();
     }
   }
 
   if (tSudMoving == true) {
-    if ((millis() - tSudActBegin) < (tSudDuration * 1000)) {
+    if (millis() / 1000 > oldMillisNord) {
       whereInTheWorldIsTenda(tSudActBegin, tSudGoingUp, tSudPosition, topic_tende_status_sud);
       oldMillisSud = millis() / 1000;
     }
-    if (millis() >= tSudDuration) {
+    if ((millis() - tSudActBegin) > (tSudDuration * 1000)) {
       tSudPosition = stopSud();
     }
   }
