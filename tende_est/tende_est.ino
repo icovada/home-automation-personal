@@ -30,7 +30,6 @@
 #include <EEPROM.h>
 #include <WiFiClient.h>
 #include <ESP8266WebServer.h>
-#include <ESP8266mDNS.h>
 #include <ESP8266HTTPUpdateServer.h>
 
 #define wifi_ssid "ssid"
@@ -212,7 +211,7 @@ void reconnect() {
     Serial.println("///////////////// - MQTT - /////////////////");
     Serial.println("Connessione...");
 
-    if (client.connect(mqtt_id))                {
+    if (client.connect(mqtt_id)) {
       //digitalWrite(D2,HIGH);
       Serial.println("Connesso");
       Serial.println("////////////////////////////////////////////");
@@ -233,7 +232,7 @@ void callback(char* topic, byte* payload, unsigned int length) {
   sTopic = topic;
   sPayload = "";
 
-  lastMQTT = millis()
+  lastMQTT = millis();
   Serial.print("Messaggio ricevuto [");
   Serial.print(topic);
   Serial.print("] ");
@@ -281,6 +280,26 @@ void callback(char* topic, byte* payload, unsigned int length) {
   }
 }
 
+void emergencyProcedure(){
+	int tTargetNordPosition;
+	int tTargetSudPosition;
+	int tLastKnownNordPosition;
+	int tLastKnownSudPosition;
+
+	tTargetNordPosition = EEPROM.read(0);
+	tTargetSudPosition = EEPROM.read(1);
+	tLastKnownNordPosition = EEPROM.read(2);
+	tLastKnownSudPosition = EEPROM.read(3);
+
+	// find out if any of the previous states was != 0
+    if (tTargetNordPosition != 0 || tTargetSudPosition != 0 || tLastKnownNordPosition != 0 || tLastKnownSudPosition != 0) {
+    	// Preform procedure only if stationary (they might be closing already)
+    	if ( !tSudMoving || !tNordMoving ) {
+    	  setNord(0);
+    	  setSud(0);
+    	}
+    }
+}
 
 //setup --------------------------------------------------------------------------------------|
 void setup() {
@@ -312,7 +331,6 @@ void setup() {
   httpServer.begin();
 }
 
-
 //loop ---------------------------------------------------------------------------------------|
 void loop() {
   //controllo connessione mqtt -------------------------------------------------------------|
@@ -340,6 +358,10 @@ void loop() {
     if (millis() >= tSudTarget) {
       tSudPosition = stopSud();
     }
+  }
+
+  if (lastMQTT > (millis() + 120000)) {
+  	emergencyProcedure();
   }
   delay(200);
 }
