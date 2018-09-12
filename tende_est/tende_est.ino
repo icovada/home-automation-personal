@@ -20,8 +20,8 @@
 // EEPROM data table
 // 0 tNordPosition
 // 1 tSudPosition
-// 2 tNordTarget
-// 3 tSudTarget
+// 2 tNordDuration
+// 3 tSudDuration
 // 4 upSeconds
 // 5 downSeconds
 
@@ -35,7 +35,7 @@
 #define wifi_ssid "ssid"
 #define wifi_password "password"
 
-#define mqtt_server "172.17.0.120"
+#define mqtt_server "192.168.1.2"
 #define mqtt_id "tendeest"
 
 #define topic_tende_set_nord "roncello/esterno/est/set/nord"
@@ -50,8 +50,8 @@
 
 unsigned long tNordActBegin = 0;
 unsigned long tSudActBegin = 0;
-unsigned long tNordTarget = 0;
-unsigned long tSudTarget = 0;
+unsigned long tNordDuration = 0;
+unsigned long tSudDuration = 0;
 unsigned long lastMQTT = 0;
 bool tNordGoingUp = false;
 bool tSudGoingUp = false;
@@ -84,26 +84,26 @@ int setNord(int position) {
     digitalWrite(D1, LOW);
     digitalWrite(D2, HIGH);
     tNordGoingUp = false;
-    tNordTarget = millis() + downSeconds * 1000 + 15000;
+    tNordDuration = downSeconds * 1000 + 15000;
   } else if (position == 0) {
     digitalWrite(D1, HIGH);
     digitalWrite(D2, LOW);
     tNordGoingUp = true;
-    tNordTarget = millis() + upSeconds * 1000 + 15000;
+    tNordDuration = upSeconds * 1000 + 15000;
   } else if (position > tNordPosition) {
     digitalWrite(D1, LOW);
     digitalWrite(D2, HIGH);
     tNordGoingUp = false;
     //Map position in 100 degrees to total seconds it takes
-    tNordTarget = millis() + downSeconds * 10 * (position - tNordPosition);
+    tNordDuration = downSeconds * 10 * (position - tNordPosition);
   } else if (position < tNordPosition) {
     digitalWrite(D1, HIGH);
     digitalWrite(D2, LOW);
     tNordGoingUp = true;
-    tNordTarget = millis() + upSeconds * 10 * (tNordPosition - position);
+    tNordDuration = upSeconds * 10 * (tNordPosition - position);
   }
   Serial.print("Target: ");
-  Serial.println(tNordTarget);
+  Serial.println(tNordDuration);
   EEPROM.write(2, position);
   EEPROM.commit();
 }
@@ -116,26 +116,26 @@ int setSud(int position) {
     digitalWrite(D6, LOW);
     digitalWrite(D7, HIGH);
     tSudGoingUp = false;
-    tSudTarget = millis() + downSeconds * 1000 + 15000;
+    tSudDuration = downSeconds * 1000 + 15000;
   } else if (position == 0) {
     digitalWrite(D6, HIGH);
     digitalWrite(D7, LOW);
     tSudGoingUp = true;
-    tSudTarget = millis() + upSeconds * 1000 + 15000;
+    tSudDuration = upSeconds * 1000 + 15000;
   } else if (position > tSudPosition) {
     digitalWrite(D6, LOW);
     digitalWrite(D7, HIGH);
     tSudGoingUp = false;
     //Map position in 100 degrees to total seconds it takes
-    tSudTarget = millis() + downSeconds * 10 * (position - tSudPosition);
+    tSudDuration = downSeconds * 10 * (position - tSudPosition);
   } else if (position < tSudPosition) {
     digitalWrite(D6, HIGH);
     digitalWrite(D7, LOW);
     tSudGoingUp = true;
-    tSudTarget = millis() + upSeconds * 10 * (tSudPosition - position);
+    tSudDuration = upSeconds * 10 * (tSudPosition - position);
   }
   Serial.print("Target: ");
-  Serial.println(tSudTarget);
+  Serial.println(tSudDuration);
   EEPROM.write(3, position);
   EEPROM.commit();
 }
@@ -207,6 +207,7 @@ void setup_wifi() {
 
 //connessione MQTT ---------------------------------------------------------------------------|
 void reconnect() {
+  unsigned long disconnectMillis = millis();
   while (!client.connected()) {
     Serial.println("///////////////// - MQTT - /////////////////");
     Serial.println("Connessione...");
@@ -218,7 +219,9 @@ void reconnect() {
 
       client.subscribe("roncello/esterno/est/set/#");
     } else {
-      //digitalWrite(D2,LOW);
+      if ((millis() - disconnectMillis) >= 30000) {
+      	emergencyProcedure();
+      }
       Serial.print("Connessione fallita, rc=");
       Serial.println(client.state());
       Serial.println("Nuovo tentativo tra 5 secondi");
@@ -321,8 +324,8 @@ void setup() {
   tNordPosition = int(EEPROM.read(0));
   tSudPosition = int(EEPROM.read(1));
 
-  tNordTarget = int(EEPROM.read(2));
-  tSudTarget = int(EEPROM.read(3));
+  tNordDuration = int(EEPROM.read(2));
+  tSudDuration = int(EEPROM.read(3));
 
   upSeconds = EEPROM.read(4);
   downSeconds = EEPROM.read(5);
@@ -341,21 +344,21 @@ void loop() {
   httpServer.handleClient();
 
   if (tNordMoving == true) {
-    if (millis() / 1000 > oldMillisNord) {
+    if ((millis() - tNordActBegin) < (tNordDuration * 1000)) {
       whereInTheWorldIsTenda(tNordActBegin, tNordGoingUp, tNordPosition, topic_tende_status_nord);
       oldMillisNord = millis() / 1000;
     }
-    if (millis() >= tNordTarget) {
+    if (millis() >= tNordDuration) {
       tNordPosition = stopNord();
     }
   }
 
   if (tSudMoving == true) {
-    if (millis() / 1000 > oldMillisSud) {
+    if ((millis() - tSudActBegin) < (tSudDuration * 1000)) {
       whereInTheWorldIsTenda(tSudActBegin, tSudGoingUp, tSudPosition, topic_tende_status_sud);
       oldMillisSud = millis() / 1000;
     }
-    if (millis() >= tSudTarget) {
+    if (millis() >= tSudDuration) {
       tSudPosition = stopSud();
     }
   }
