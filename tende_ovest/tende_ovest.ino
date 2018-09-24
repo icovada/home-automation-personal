@@ -87,24 +87,24 @@ int setNord(int position) {
   tNordMoving = true;
   oldMillisNord = 0;
   if (position == 100) {
-    digitalWrite(D1, LOW);
-    digitalWrite(D2, HIGH);
+    digitalWrite(D6, HIGH);
+    digitalWrite(D7, LOW);
     tNordGoingUp = false;
     tNordDuration = downSeconds * 1000 + 15000;
   } else if (position == 0) {
-    digitalWrite(D1, HIGH);
-    digitalWrite(D2, LOW);
+    digitalWrite(D6, LOW);
+    digitalWrite(D7, HIGH);
     tNordGoingUp = true;
     tNordDuration = upSeconds * 1000 + 15000;
   } else if (position > tNordPosition) {
-    digitalWrite(D1, LOW);
-    digitalWrite(D2, HIGH);
+    digitalWrite(D6, HIGH);
+    digitalWrite(D7, LOW);
     tNordGoingUp = false;
     //Map position in 100 degrees to total seconds it takes
     tNordDuration = downSeconds * 10 * (position - tNordPosition);
   } else if (position < tNordPosition) {
-    digitalWrite(D1, HIGH);
-    digitalWrite(D2, LOW);
+    digitalWrite(D6, LOW);
+    digitalWrite(D7, HIGH);
     tNordGoingUp = true;
     tNordDuration = upSeconds * 10 * (tNordPosition - position);
   }
@@ -120,24 +120,24 @@ int setSud(int position) {
   tSudMoving = true;
   oldMillisSud = 0;
   if (position == 100) {
-    digitalWrite(D6, LOW);
-    digitalWrite(D7, HIGH);
+    digitalWrite(D1, HIGH);
+    digitalWrite(D2, LOW);
     tSudGoingUp = false;
     tSudDuration = downSeconds * 1000 + 15000;
   } else if (position == 0) {
-    digitalWrite(D6, HIGH);
-    digitalWrite(D7, LOW);
+    digitalWrite(D1, LOW);
+    digitalWrite(D2, HIGH);
     tSudGoingUp = true;
     tSudDuration = upSeconds * 1000 + 15000;
   } else if (position > tSudPosition) {
-    digitalWrite(D6, LOW);
-    digitalWrite(D7, HIGH);
+    digitalWrite(D1, HIGH);
+    digitalWrite(D2, LOW);
     tSudGoingUp = false;
     //Map position in 100 degrees to total seconds it takes
     tSudDuration = downSeconds * 10 * (position - tSudPosition);
   } else if (position < tSudPosition) {
-    digitalWrite(D6, HIGH);
-    digitalWrite(D7, LOW);
+    digitalWrite(D1, LOW);
+    digitalWrite(D2, HIGH);
     tSudGoingUp = true;
     tSudDuration = upSeconds * 10 * (tSudPosition - position);
   }
@@ -160,8 +160,8 @@ int whereInTheWorldIsTenda(unsigned long actBegin, bool goingUp, int tPosition, 
 }
 
 int stopNord(){
-  digitalWrite(D1, LOW);
-  digitalWrite(D2, LOW);
+  digitalWrite(D6, LOW);
+  digitalWrite(D7, LOW);
   tNordMoving = false;
   int newPosition = whereInTheWorldIsTenda(tNordActBegin, tNordGoingUp, tNordPosition, topic_tende_status_nord);
   EEPROM.write(0, newPosition);
@@ -171,8 +171,8 @@ int stopNord(){
 }
 
 int stopSud() {
-  digitalWrite(D6, LOW);
-  digitalWrite(D7, LOW);
+  digitalWrite(D1, LOW);
+  digitalWrite(D2, LOW);
   tSudMoving = false;
   int newPosition = whereInTheWorldIsTenda(tSudActBegin, tSudGoingUp, tSudPosition, topic_tende_status_sud);
   EEPROM.write(1, newPosition);
@@ -231,7 +231,7 @@ void reconnect() {
       Serial.println("////////////////////////////////////////////");
 
       client.subscribe("roncello/esterno/ovest/set/#");
-      client.subscribe("roncello/timer/1min");
+      client.subscribe("timer/1min");
     } else {
       if ((millis() - disconnectMillis) >= 30000) {
 	emergencyProcedure();
@@ -294,28 +294,30 @@ void callback(char* topic, byte* payload, unsigned int length) {
     downSeconds = sPayload.toInt();
     EEPROM.write(5, sPayload.toInt());
     EEPROM.commit();
+  } else if (sTopic == topic_telecomando_set) {
+    telecomando();
   }
 }
 
 void emergencyProcedure(){
-	int tTargetNordPosition;
-	int tTargetSudPosition;
-	int tLastKnownNordPosition;
-	int tLastKnownSudPosition;
+  int tTargetNordPosition;
+  int tTargetSudPosition;
+  int tLastKnownNordPosition;
+  int tLastKnownSudPosition;
 
-	tTargetNordPosition = EEPROM.read(0);
-	tTargetSudPosition = EEPROM.read(1);
-	tLastKnownNordPosition = EEPROM.read(2);
-	tLastKnownSudPosition = EEPROM.read(3);
+  tTargetNordPosition = EEPROM.read(0);
+  tTargetSudPosition = EEPROM.read(1);
+  tLastKnownNordPosition = EEPROM.read(2);
+  tLastKnownSudPosition = EEPROM.read(3);
 
-	// find out if any of the previous states was != 0
-    if (tTargetNordPosition != 0 || tTargetSudPosition != 0 || tLastKnownNordPosition != 0 || tLastKnownSudPosition != 0) {
-	// Preform procedure only if stationary (they might be closing already)
-	if ( !tSudMoving || !tNordMoving ) {
-	  setNord(0);
-	  setSud(0);
-	}
+  // find out if any of the previous states was != 0
+  if (tTargetNordPosition != 0 || tTargetSudPosition != 0 || tLastKnownNordPosition != 0 || tLastKnownSudPosition != 0) {
+    // Perform procedure only if stationary (they might be closing already)
+    if ( !tSudMoving || !tNordMoving ) {
+      setNord(0);
+      setSud(0);
     }
+  }
 }
 
 //setup --------------------------------------------------------------------------------------|
@@ -364,7 +366,7 @@ void loop() {
       whereInTheWorldIsTenda(tNordActBegin, tNordGoingUp, tNordPosition, topic_tende_status_nord);
       oldMillisNord = millis() / 1000;
     }
-    if ((millis() - tNordActBegin) > (tNordDuration * 1000)) {
+    if ((millis() - tNordActBegin) > (tNordDuration)) {
       tNordPosition = stopNord();
     }
   }
@@ -374,14 +376,13 @@ void loop() {
       whereInTheWorldIsTenda(tSudActBegin, tSudGoingUp, tSudPosition, topic_tende_status_sud);
       oldMillisSud = millis() / 1000;
     }
-    if ((millis() - tSudActBegin) > (tSudDuration * 1000)) {
+    if ((millis() - tSudActBegin) > (tSudDuration)) {
       tSudPosition = stopSud();
     }
   }
 
-  if (lastMQTT > (millis() + 120000)) {
+  if (lastMQTT < (millis() - 120000)) {
 	emergencyProcedure();
   }
   delay(200);
 }
-

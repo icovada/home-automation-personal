@@ -223,9 +223,10 @@ void reconnect() {
       Serial.println("////////////////////////////////////////////");
 
       client.subscribe("roncello/esterno/est/set/#");
+      client.subscribe("timer/1min");
     } else {
       if ((millis() - disconnectMillis) >= 30000) {
-      	emergencyProcedure();
+        emergencyProcedure();
       }
       Serial.print("Connessione fallita, rc=");
       Serial.println(client.state());
@@ -289,24 +290,24 @@ void callback(char* topic, byte* payload, unsigned int length) {
 }
 
 void emergencyProcedure(){
-	int tTargetNordPosition;
-	int tTargetSudPosition;
-	int tLastKnownNordPosition;
-	int tLastKnownSudPosition;
+  int tTargetNordPosition;
+  int tTargetSudPosition;
+  int tLastKnownNordPosition;
+  int tLastKnownSudPosition;
 
-	tTargetNordPosition = EEPROM.read(0);
-	tTargetSudPosition = EEPROM.read(1);
-	tLastKnownNordPosition = EEPROM.read(2);
-	tLastKnownSudPosition = EEPROM.read(3);
+  tTargetNordPosition = EEPROM.read(0);
+  tTargetSudPosition = EEPROM.read(1);
+  tLastKnownNordPosition = EEPROM.read(2);
+  tLastKnownSudPosition = EEPROM.read(3);
 
-	// find out if any of the previous states was != 0
-    if (tTargetNordPosition != 0 || tTargetSudPosition != 0 || tLastKnownNordPosition != 0 || tLastKnownSudPosition != 0) {
-    	// Preform procedure only if stationary (they might be closing already)
-    	if ( !tSudMoving || !tNordMoving ) {
-    	  setNord(0);
-    	  setSud(0);
-    	}
+  // find out if any of the previous states was != 0
+  if (tTargetNordPosition != 0 || tTargetSudPosition != 0 || tLastKnownNordPosition != 0 || tLastKnownSudPosition != 0) {
+    // Perform procedure only if stationary (they might be closing already)
+    if ( !tSudMoving || !tNordMoving ) {
+      setNord(0);
+      setSud(0);
     }
+  }
 }
 
 //setup --------------------------------------------------------------------------------------|
@@ -353,7 +354,7 @@ void loop() {
       whereInTheWorldIsTenda(tNordActBegin, tNordGoingUp, tNordPosition, topic_tende_status_nord);
       oldMillisNord = millis() / 1000;
     }
-    if ((millis() - tNordActBegin) > (tNordDuration * 1000)) {
+    if ((millis() - tNordActBegin) > (tNordDuration)) {
       tNordPosition = stopNord();
     }
   }
@@ -363,13 +364,13 @@ void loop() {
       whereInTheWorldIsTenda(tSudActBegin, tSudGoingUp, tSudPosition, topic_tende_status_sud);
       oldMillisSud = millis() / 1000;
     }
-    if ((millis() - tSudActBegin) > (tSudDuration * 1000)) {
+    if ((millis() - tSudActBegin) > (tSudDuration)) {
       tSudPosition = stopSud();
     }
   }
 
-  if (lastMQTT > (millis() + 120000)) {
-  	emergencyProcedure();
+  if (lastMQTT < (millis() - 120000)) {
+    emergencyProcedure();
   }
   delay(200);
 }
