@@ -102,8 +102,9 @@ void callback(char* topic, byte* payload, unsigned int length){
   }
   if (sTopic == topic_riscaldamento_set){
     mqttDo(sPayload,topic_riscaldamento_status,4,0);
-    lcd.setCursor(42,2);
+    lcd.setCursor(42,4);
     lcd.print(String(sPayload).c_str());
+    lcd.print(" ");
   }
   if (sTopic == tempEst){
     lcd.setCursor(42,2);
@@ -142,10 +143,13 @@ boolean reconnect() {
     client.subscribe(subscribed_topic);
     client.subscribe(tempOvest);
     client.subscribe(tempEst);
+    client.subscribe(topic_riscaldamento_set);
     lcd.setCursor(0,2);
     lcd.print("Est:          °c");
     lcd.setCursor(0,3);
     lcd.print("Ovest:        °c");
+    lcd.setCursor(0,4);
+    lcd.print("Risc:           ");
     analogWrite(13,lcdBrightness);
   } else {
     Serial.print("failed, rc=");
@@ -157,6 +161,9 @@ boolean reconnect() {
     lcd.print("                ");
     lcd.setCursor(0,3);
     lcd.print("                ");
+    lcd.setCursor(0,4);
+    lcd.print("                ");
+
   }
 }
 
