@@ -78,11 +78,11 @@ void setup() {
 //loop ---------------------------------------------------------------------------------------|
 void loop() {
   //controllo connessione mqtt -------------------------------------------------------------|
-  httpServer.handleClient();
 
-  oldMillis = millis()/1000;
+  oldMillis = millis();
 
-  while ((oldMillis + 60) >= millis()/1000){
+  while ((oldMillis + 60000) >= millis()){
+    httpServer.handleClient();
     if (analogRead(A0) > 550){
       if (old_led_state == 0){
         minute_blips = minute_blips + 1;
