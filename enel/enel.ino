@@ -1,27 +1,23 @@
-//|   -----------------------------------------------------------------------------------   |//
-//|                                                                                         |//
-//|          This program is free software; you can redistribute it and/or modify           |//
-//|          it under the terms of the GNU General Public License as published by           |//
-//|           the Free Software Foundation; either version 3 of the License, or             |//
-//|                          (at your option) any later version.                            |//
-//|                                                                                         |//
-//|             This program is distributed in the hope that it will be useful,             |//
-//|             but WITHOUT ANY WARRANTY; without even the implied warranty of              |//
-//|              MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the               |//
-//|                      GNU General Public License for more details.                       |//
-//|                                                                                         |//
-//|            You should have received a copy of the GNU General Public License            |//
-//|         along with this program; if not, write to the Free Software Foundation,         |//
-//|            Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301  USA            |//
-//|_________________________________________________________________________________________|//
-//                                                                                           //
+/*
+This program is free software; you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation; either version 3 of the License, or
+(at your option) any later version.
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+GNU General Public License for more details.
+You should have received a copy of the GNU General Public License
+along with this program; if not, write to the Free Software Foundation,
+Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301  USA
+*/                                                                                         //
 
-#include <ESP8266WiFi.h>
-#include <WiFiClient.h>
-#include <ESP8266WebServer.h>
-#include <ESP8266mDNS.h>
-#include <ESP8266HTTPUpdateServer.h>
 #include <ESP8266HTTPClient.h>
+#include <ESP8266HTTPUpdateServer.h>
+#include <ESP8266WebServer.h>
+#include <ESP8266WiFi.h>
+#include <ESP8266mDNS.h>
+#include <WiFiClient.h>
 
 #define wifi_ssid "ssid"
 #define wifi_password "password"
@@ -43,7 +39,8 @@ ESP8266HTTPUpdateServer httpUpdater;
 
 HTTPClient http;
 
-//connessione WiFi ---------------------------------------------------------------------------|
+// connessione WiFi
+// ---------------------------------------------------------------------------|
 void setup_wifi() {
   delay(10);
   Serial.println("///////////////// - WiFi - /////////////////");
@@ -63,8 +60,8 @@ void setup_wifi() {
   Serial.println("");
 }
 
-
-//setup --------------------------------------------------------------------------------------|
+// setup
+// --------------------------------------------------------------------------------------|
 void setup() {
   pinMode(A0, INPUT);
 
@@ -75,16 +72,18 @@ void setup() {
   httpServer.begin();
 }
 
-//loop ---------------------------------------------------------------------------------------|
+// loop
+// ---------------------------------------------------------------------------------------|
 void loop() {
-  //controllo connessione mqtt -------------------------------------------------------------|
+  // controllo connessione mqtt
+  // -------------------------------------------------------------|
 
   oldMillis = millis();
 
-  while ((oldMillis + 60000) >= millis()){
+  while ((oldMillis + 60000) >= millis()) {
     httpServer.handleClient();
-    if (analogRead(A0) > 550){
-      if (old_led_state == 0){
+    if (analogRead(A0) > 550) {
+      if (old_led_state == 0) {
         minute_blips = minute_blips + 1;
         old_led_state = 1;
         Serial.println("Blip");
@@ -95,10 +94,10 @@ void loop() {
     delay(50);
   }
   Serial.println("Minute");
-  http.begin("http://192.168.1.2/emoncms/input/post.json?node=3&json={'Watt':" + String(minute_blips) + "}&apikey=5a8504496b87a071442b5d2642123fe9");
+  http.begin("http://192.168.1.2/emoncms/input/post.json?node=3&json={'Watt':" +
+             String(minute_blips) +
+             "}&apikey=5a8504496b87a071442b5d2642123fe9");
   http.GET();
   minute_blips = 0;
   http.end();
 }
-
-

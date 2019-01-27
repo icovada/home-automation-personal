@@ -1,21 +1,17 @@
-//|   -----------------------------------------------------------------------------------   |//
-//|                                                                                         |//
-//|          This program is free software; you can redistribute it and/or modify           |//
-//|          it under the terms of the GNU General Public License as published by           |//
-//|           the Free Software Foundation; either version 3 of the License, or             |//
-//|                          (at your option) any later version.                            |//
-//|                                                                                         |//
-//|             This program is distributed in the hope that it will be useful,             |//
-//|             but WITHOUT ANY WARRANTY; without even the implied warranty of              |//
-//|              MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the               |//
-//|                      GNU General Public License for more details.                       |//
-//|                                                                                         |//
-//|            You should have received a copy of the GNU General Public License            |//
-//|         along with this program; if not, write to the Free Software Foundation,         |//
-//|            Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301  USA            |//
-//|_________________________________________________________________________________________|//
-//                                                                                           //
-
+/*
+This program is free software; you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation; either version 3 of the License, or
+(at your option) any later version.
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+GNU General Public License for more details.
+You should have received a copy of the GNU General Public License
+along with this program; if not, write to the Free Software Foundation,
+Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301  USA
+*/
+//
 
 // EEPROM data table
 // 0 tNordPosition
@@ -28,12 +24,12 @@
 // sketch upload command
 // curl -F "image=@tende_est.ino.bin" http://192.168.1.18/update -v
 
+#include <EEPROM.h>
+#include <ESP8266HTTPUpdateServer.h>
+#include <ESP8266WebServer.h>
 #include <ESP8266WiFi.h>
 #include <PubSubClient.h>
-#include <EEPROM.h>
 #include <WiFiClient.h>
-#include <ESP8266WebServer.h>
-#include <ESP8266HTTPUpdateServer.h>
 
 #define wifi_ssid "ssid"
 #define wifi_password "password"
@@ -41,14 +37,14 @@
 #define mqtt_server "192.168.1.2"
 #define mqtt_id "tendeovest"
 
-#define topic_tende_set_nord  "roncello/esterno/ovest/set/nord"
-#define topic_tende_set_sud   "roncello/esterno/ovest/set/sud"
+#define topic_tende_set_nord "roncello/esterno/ovest/set/nord"
+#define topic_tende_set_sud "roncello/esterno/ovest/set/sud"
 #define topic_tende_set_group "roncello/esterno/ovest/set/group"
 
-#define topic_tende_status_nord  "roncello/esterno/ovest/status/nord"
-#define topic_tende_status_sud   "roncello/esterno/ovest/status/sud"
+#define topic_tende_status_nord "roncello/esterno/ovest/status/nord"
+#define topic_tende_status_sud "roncello/esterno/ovest/status/sud"
 
-#define topic_telecomando_set   "roncello/esterno/ovest/set/telecomando"
+#define topic_telecomando_set "roncello/esterno/ovest/set/telecomando"
 
 #define topic_upseconds_set "roncello/esterno/ovest/set/upseconds"
 #define topic_downseconds_set "roncello/esterno/ovest/set/downseconds"
@@ -100,7 +96,7 @@ int setNord(int position) {
     digitalWrite(D6, HIGH);
     digitalWrite(D7, LOW);
     tNordGoingUp = false;
-    //Map position in 100 degrees to total seconds it takes
+    // Map position in 100 degrees to total seconds it takes
     tNordDuration = downSeconds * 10 * (position - tNordPosition);
   } else if (position < tNordPosition) {
     digitalWrite(D6, LOW);
@@ -133,7 +129,7 @@ int setSud(int position) {
     digitalWrite(D1, HIGH);
     digitalWrite(D2, LOW);
     tSudGoingUp = false;
-    //Map position in 100 degrees to total seconds it takes
+    // Map position in 100 degrees to total seconds it takes
     tSudDuration = downSeconds * 10 * (position - tSudPosition);
   } else if (position < tSudPosition) {
     digitalWrite(D1, LOW);
@@ -147,23 +143,26 @@ int setSud(int position) {
   EEPROM.commit();
 }
 
-int whereInTheWorldIsTenda(unsigned long actBegin, bool goingUp, int tPosition, char *topic) {
+int whereInTheWorldIsTenda(unsigned long actBegin, bool goingUp, int tPosition,
+                           char *topic) {
   unsigned long tTime = millis() - actBegin;
   int newPosition;
   if (goingUp == true) {
     newPosition = posValidator(tPosition - tTime / ((upSeconds * 1000) / 100));
   } else {
-    newPosition = posValidator(tPosition + tTime / ((downSeconds * 1000) / 100));
+    newPosition =
+        posValidator(tPosition + tTime / ((downSeconds * 1000) / 100));
   }
   client.publish(topic, String(newPosition).c_str());
   return newPosition;
 }
 
-int stopNord(){
+int stopNord() {
   digitalWrite(D6, LOW);
   digitalWrite(D7, LOW);
   tNordMoving = false;
-  int newPosition = whereInTheWorldIsTenda(tNordActBegin, tNordGoingUp, tNordPosition, topic_tende_status_nord);
+  int newPosition = whereInTheWorldIsTenda(
+      tNordActBegin, tNordGoingUp, tNordPosition, topic_tende_status_nord);
   EEPROM.write(0, newPosition);
   EEPROM.write(2, newPosition);
   EEPROM.commit();
@@ -174,7 +173,8 @@ int stopSud() {
   digitalWrite(D1, LOW);
   digitalWrite(D2, LOW);
   tSudMoving = false;
-  int newPosition = whereInTheWorldIsTenda(tSudActBegin, tSudGoingUp, tSudPosition, topic_tende_status_sud);
+  int newPosition = whereInTheWorldIsTenda(
+      tSudActBegin, tSudGoingUp, tSudPosition, topic_tende_status_sud);
   EEPROM.write(1, newPosition);
   EEPROM.write(3, newPosition);
   EEPROM.commit();
@@ -191,15 +191,14 @@ int posValidator(long position) {
   return int(position);
 }
 
-void telecomando(){
-    digitalWrite(D8, LOW);
-    delay(1000);
-    digitalWrite(D8, HIGH);
+void telecomando() {
+  digitalWrite(D8, LOW);
+  delay(1000);
+  digitalWrite(D8, HIGH);
 }
 
-
-
-//connessione WiFi ---------------------------------------------------------------------------|
+// connessione WiFi
+// ---------------------------------------------------------------------------|
 void setup_wifi() {
   delay(10);
   Serial.println("///////////////// - WiFi - /////////////////");
@@ -218,7 +217,8 @@ void setup_wifi() {
   Serial.println("");
 }
 
-//connessione MQTT ---------------------------------------------------------------------------|
+// connessione MQTT
+// ---------------------------------------------------------------------------|
 void reconnect() {
   unsigned long disconnectMillis = millis();
   while (!client.connected()) {
@@ -226,7 +226,7 @@ void reconnect() {
     Serial.println("Connessione...");
 
     if (client.connect(mqtt_id)) {
-      //digitalWrite(D2,HIGH);
+      // digitalWrite(D2,HIGH);
       Serial.println("Connesso");
       Serial.println("////////////////////////////////////////////");
 
@@ -234,7 +234,7 @@ void reconnect() {
       client.subscribe("timer/1min");
     } else {
       if ((millis() - disconnectMillis) >= 30000) {
-	emergencyProcedure();
+        emergencyProcedure();
       }
       Serial.print("Connessione fallita, rc=");
       Serial.println(client.state());
@@ -244,8 +244,9 @@ void reconnect() {
   }
 }
 
-//callback MQTT ------------------------------------------------------------------------------|
-void callback(char* topic, byte* payload, unsigned int length) {
+// callback MQTT
+// ------------------------------------------------------------------------------|
+void callback(char *topic, byte *payload, unsigned int length) {
   sTopic = topic;
   sPayload = "";
 
@@ -259,7 +260,6 @@ void callback(char* topic, byte* payload, unsigned int length) {
   }
   Serial.println();
   Serial.println(String(sPayload));
-
 
   if (sTopic == topic_tende_set_nord) {
     if (tNordMoving) {
@@ -299,7 +299,7 @@ void callback(char* topic, byte* payload, unsigned int length) {
   }
 }
 
-void emergencyProcedure(){
+void emergencyProcedure() {
   int tTargetNordPosition;
   int tTargetSudPosition;
   int tLastKnownNordPosition;
@@ -311,16 +311,18 @@ void emergencyProcedure(){
   tLastKnownSudPosition = EEPROM.read(3);
 
   // find out if any of the previous states was != 0
-  if (tTargetNordPosition != 0 || tTargetSudPosition != 0 || tLastKnownNordPosition != 0 || tLastKnownSudPosition != 0) {
+  if (tTargetNordPosition != 0 || tTargetSudPosition != 0 ||
+      tLastKnownNordPosition != 0 || tLastKnownSudPosition != 0) {
     // Perform procedure only if stationary (they might be closing already)
-    if ( !tSudMoving || !tNordMoving ) {
+    if (!tSudMoving || !tNordMoving) {
       setNord(0);
       setSud(0);
     }
   }
 }
 
-//setup --------------------------------------------------------------------------------------|
+// setup
+// --------------------------------------------------------------------------------------|
 void setup() {
   pinMode(D1, OUTPUT);
   pinMode(D2, OUTPUT);
@@ -352,9 +354,11 @@ void setup() {
   httpServer.begin();
 }
 
-//loop ---------------------------------------------------------------------------------------|
+// loop
+// ---------------------------------------------------------------------------------------|
 void loop() {
-  //controllo connessione mqtt -------------------------------------------------------------|
+  // controllo connessione mqtt
+  // -------------------------------------------------------------|
   if (!client.connected()) {
     reconnect();
   }
@@ -363,7 +367,8 @@ void loop() {
 
   if (tNordMoving == true) {
     if (millis() / 1000 > oldMillisNord) {
-      whereInTheWorldIsTenda(tNordActBegin, tNordGoingUp, tNordPosition, topic_tende_status_nord);
+      whereInTheWorldIsTenda(tNordActBegin, tNordGoingUp, tNordPosition,
+                             topic_tende_status_nord);
       oldMillisNord = millis() / 1000;
     }
     if ((millis() - tNordActBegin) > (tNordDuration)) {
@@ -373,7 +378,8 @@ void loop() {
 
   if (tSudMoving == true) {
     if (millis() / 1000 > oldMillisNord) {
-      whereInTheWorldIsTenda(tSudActBegin, tSudGoingUp, tSudPosition, topic_tende_status_sud);
+      whereInTheWorldIsTenda(tSudActBegin, tSudGoingUp, tSudPosition,
+                             topic_tende_status_sud);
       oldMillisSud = millis() / 1000;
     }
     if ((millis() - tSudActBegin) > (tSudDuration)) {
@@ -382,7 +388,7 @@ void loop() {
   }
 
   if (lastMQTT < (millis() - 120000)) {
-	emergencyProcedure();
+    emergencyProcedure();
   }
   delay(200);
 }
