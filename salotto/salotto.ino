@@ -12,7 +12,7 @@ along with this program; if not, write to the Free Software Foundation,
 Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301  USA
 */
 
-#include <EthernetIndustruino.h>
+#include "EthernetIndustruino.h"
 #include <Indio.h>
 #include <PubSubClient.h>
 #include <SPI.h>
@@ -50,59 +50,109 @@ PubSubClient client;
 String sTopic;
 String sPayload;
 
+String baseTopic = "/roncello/industruino/";
+
 static UC1701 lcd;
 
 #define mqtt_server "192.168.1.2"
 
-#define subscribed_topic "roncello/salotto/set/#"
-#define tempOvest "roncello/esterno/ovest/status/temperatura"
-#define tempEst "roncello/esterno/est/status/temperatura"
-
-#define topic_salottoEst_set "roncello/salotto/set/luci/salotto/est"
-#define topic_salottoEst_status "roncello/salotto/status/luci/salotto/est"
-
-#define topic_salottoOvest_set "roncello/salotto/set/luci/salotto/ovest"
-#define topic_salottoOvest_status "roncello/salotto/status/luci/salotto/ovest"
-
-#define topic_cucina_soffitto_set "roncello/salotto/set/luci/cucina/soffitto"
-#define topic_cucina_soffitto_status                                           \
-  "roncello/salotto/status/luci/cucina/soffitto"
-
-#define topic_cucina_led "roncello/cucina/set/led"
-
-#define topic_campanello_casa "roncello/salotto/status/campanello"
-#define topic_salottoSonus "roncello/salotto/set/campanello"
+#define subscribed_topic "roncello/industruino/set/#"
 
 #define topic_lcd_brightness "roncello/salotto/set/industruino/lcdbrightness"
 
 #define topic_riscaldamento_set "roncello/riscaldamento/set/generale"
-#define topic_riscaldamento_status "roncello/riscaldamento/status/generale"
 
 // Enter a MAC address and IP address for your controller below.
 byte mac[] = {0xDE, 0xAD, 0xBE, 0xEF, 0xFE, 0xED};
 IPAddress ip(192, 168, 1, 3);
 
-bool mqttDo(String payload, String pubTopic, int pinNumber, bool pinStatus) {
-  pinStatus = !pinStatus;
-  if (payload == "ON") {
-    Indio.digitalWrite(pinNumber, HIGH);
-    client.publish(pubTopic.c_str(), String("ON").c_str(), true);
-  } else {
-    Indio.digitalWrite(pinNumber, LOW);
-    client.publish(pubTopic.c_str(), String("OFF").c_str(), true);
+class InputPin {
+public:
+  InputPin() {}
+
+  InputPin(int pin, bool islatching, bool isanalog, String name) {
+    _pin = pin;
+    _latching = islatching;
+    _analog = isanalog;
+    _debounce = millis();
+    _name = name;
+    if (isanalog) {
+      Indio.analogReadMode(_pin, V10_p);
+      _oldpinstatus = Indio.analogRead(_pin);
+    } else {
+      Indio.digitalMode(_pin, INPUT);
+      _oldpinstatus = digitalRead(_pin);
+    }
   }
-  return pinStatus;
-}
+
+  void Check() {
+
+    if (millis() > _debounce + 30) {
+      bool pinStatus;
+      if (_analog) {
+        if (Indio.analogRead(_pin) < 10) {
+          pinStatus = 0;
+        } else if (Indio.analogRead(_pin) > 80) {
+          pinStatus = 1;
+        }
+      } else {
+        pinStatus = Indio.digitalRead(_pin);
+      }
+      if (_latching) {
+        if (pinStatus != _oldpinstatus) {
+          _notifyChange("single");
+          Serial.println("Single press");
+          _oldpinstatus = pinStatus;
+        }
+      } else {
+        if (!pinStatus && _oldpinstatus) { // if pressed and was not pressed
+          _oldpinstatus = 0;
+          _lock = true;
+          _activationTimer = millis();
+        } else if (((millis() - _activationTimer) > 400) &&
+                   _lock) { // If still pressed after 400 ms
+          _lock = false;
+          Serial.println("Long press");
+          _notifyChange("long");
+        } else if (pinStatus && !_oldpinstatus) { // if Let go
+          if (_lock) {                            // if still in action
+            _oldpinstatus = 1;
+            _lock = false;
+            Serial.println("Single press");
+            _notifyChange("single");
+          } else {
+            _oldpinstatus = 1;
+          }
+        }
+      }
+      _debounce = millis();
+    }
+  }
+
+protected:
+  bool _lock;
+  bool _oldpinstatus;
+  bool _latching;
+  bool _analog;
+  unsigned long _debounce;
+  int _pin;
+  uint32_t _activationTimer;
+  String _name;
+
+  void _notifyChange(String event) {
+    String topic = baseTopic + "event/" + _name;
+    client.publish(topic.c_str(), event.c_str());
+  }
+};
 
 void callback(char *topic, byte *payload, unsigned int length) {
   sTopic = topic;
   sPayload = "";
 
   for (int i = 0; i < length; i++) {
-    Serial.print((char)payload[i]);
     sPayload += (char)payload[i];
   }
-
+/*
   if (sTopic == topic_salottoEst_set) {
     pinUno = mqttDo(sPayload, topic_salottoEst_status, 1, pinUno);
   }
@@ -117,15 +167,7 @@ void callback(char *topic, byte *payload, unsigned int length) {
     lcd.setCursor(42, 4);
     lcd.print(String(sPayload).c_str());
     lcd.print(" ");
-  }
-  if (sTopic == tempEst) {
-    lcd.setCursor(42, 2);
-    lcd.print(String(sPayload).c_str());
-  }
-  if (sTopic == tempOvest) {
-    lcd.setCursor(42, 3);
-    lcd.print(String(sPayload).c_str());
-  }
+  }*/
   if (sTopic == topic_lcd_brightness) {
     lcdBrightness = map(sPayload.toInt(), 0, 100, 255, 0);
     analogWrite(13, lcdBrightness);
@@ -153,15 +195,7 @@ boolean reconnect() {
     lcd.print("Connected    ");
     Serial.println("connected");
     client.subscribe(subscribed_topic);
-    client.subscribe(tempOvest);
-    client.subscribe(tempEst);
     client.subscribe(topic_riscaldamento_set);
-    lcd.setCursor(0, 2);
-    lcd.print("Est:          °c");
-    lcd.setCursor(0, 3);
-    lcd.print("Ovest:        °c");
-    lcd.setCursor(0, 4);
-    lcd.print("Risc:           ");
     analogWrite(13, lcdBrightness);
   } else {
     Serial.print("failed, rc=");
@@ -169,14 +203,10 @@ boolean reconnect() {
     Serial.println(" try again in 10 seconds");
     lcd.setCursor(30, 0);
     lcd.print("FAILED       ");
-    lcd.setCursor(0, 2);
-    lcd.print("                ");
-    lcd.setCursor(0, 3);
-    lcd.print("                ");
-    lcd.setCursor(0, 4);
-    lcd.print("                ");
   }
 }
+
+InputPin pinmanager[7];
 
 void setup() {
   lcd.begin();
@@ -198,28 +228,34 @@ void setup() {
 
   delay(5000);
   Serial.println("Ci siamo");
+
+  Indio.setADCResolution(12);
+
+  // OUTPUTS
   Indio.digitalMode(1, OUTPUT); // Salotto ovest
   Indio.digitalMode(2, OUTPUT); // Salotto est
   Indio.digitalMode(3, OUTPUT); // Cucina
   Indio.digitalMode(4, OUTPUT); // Riscaldamento
-  Indio.digitalMode(5, INPUT);  // Salotto est
-  Indio.digitalMode(6, INPUT);  // Salotto ovest
-  Indio.digitalMode(7, INPUT);  // Led cucina DOWN
 
-  Indio.setADCResolution(12);
-  Indio.analogReadMode(1, V10_p); // Campanello casa
-  Indio.analogReadMode(2, V10_p); // Cucina
-  Indio.analogReadMode(3, V10_p); // Sonoff salotto
-  Indio.analogReadMode(4, V10_p); // Led cucina UP
+  int pins[] = {5,6,7,1,2,3,4};
+  bool latching[] = {0,0,0,0,0,0,0};
+  bool isanalog[] = {0,0,0,1,1,1,1};
+  String names[] = {"salotto/est",
+                    "salotto/ovest",
+                    "cucina/led/down",
+                    "campanello",
+                    "cucina/soffitto",
+                    "salotto/lampade",
+                    "cucina/led/up"};
+
+  for (int i = 0; i < 7; i++){
+    pinmanager[i] = InputPin(pins[i], latching[i], isanalog[i], names[i]);
+  }
 
   client.setClient(ethClient);
   client.setServer(mqtt_server, 1883);
   client.setCallback(callback);
   lastReconnectAttempt = 0;
-
-  pinCinque = Indio.digitalRead(5);
-  pinSei = Indio.digitalRead(6);
-  pinSette = Indio.digitalRead(7);
 
   Indio.digitalWrite(1, LOW);
   Indio.digitalWrite(2, LOW);
@@ -244,64 +280,11 @@ void loop() {
         lastReconnectAttempt = 0;
       }
     }
-  } else {
-    client.loop();
-  }
-  pinCinqueNew = Indio.digitalRead(5);
-  pinSeiNew = Indio.digitalRead(6);
-  pinSetteNew = Indio.digitalRead(7);
+  } 
 
-  if ((pinCinqueNew == 1) && (pinCinqueNew != pinCinque)) {
-    pinUnoNew = physicalToggle(pinUno, 1, topic_salottoEst_status);
+  for (int i = 0; i < 8; i++){
+    pinmanager[i].Check();
   }
-
-  if ((pinSeiNew == 1) && (pinSeiNew != pinSei)) {
-    pinDueNew = physicalToggle(pinDue, 2, topic_salottoOvest_status);
-  }
-
-  if ((pinSetteNew == 1) && (pinSetteNew != pinSette)) {
-    client.publish(topic_cucina_led, String("DOWN").c_str());
-  }
-
-  if ((Indio.analogRead(1) > 80) && (pinA1 == 0)) {
-    client.publish(topic_campanello_casa, String("ON").c_str());
-    pinA1 = 1;
-  }
-
-  if ((Indio.analogRead(1) < 10) && (pinA1 == 1)) {
-    client.publish(topic_campanello_casa, String("OFF").c_str(), true);
-    pinA1 = 0;
-  }
-
-  if ((Indio.analogRead(2) > 80) && (pinA2 == 0)) {
-    pinTreNew = physicalToggle(pinTre, 3, topic_cucina_soffitto_status);
-    pinA2 = 1;
-  }
-  if ((Indio.analogRead(2) < 10) && (pinA2 == 1)) {
-    pinA2 = 0;
-  }
-
-  if ((Indio.analogRead(3) > 80) && (pinA3 == 0)) {
-    client.publish(topic_salottoSonus, String("Toggle").c_str());
-    pinA3 = 1;
-  }
-  if ((Indio.analogRead(3) < 10) && (pinA3 == 1)) {
-    pinA3 = 0;
-  }
-
-  if ((Indio.analogRead(4) > 80) && (pinA4 == 0)) {
-    client.publish(topic_cucina_led, String("UP").c_str());
-    pinA4 = 1;
-  }
-  if ((Indio.analogRead(4) < 10) && (pinA4 == 1)) {
-    pinA4 = 0;
-  }
-
-  pinUno = pinUnoNew;
-  pinDue = pinDueNew;
-  pinTre = pinTreNew;
-  pinCinque = pinCinqueNew;
-  pinSei = pinSeiNew;
-  pinSette = pinSetteNew;
+  
   client.loop();
 }
