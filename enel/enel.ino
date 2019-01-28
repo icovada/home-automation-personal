@@ -80,7 +80,7 @@ void loop() {
 
   oldMillis = millis();
 
-  while ((oldMillis + 60000) >= millis()) {
+  while ((millis() - oldmillis) < 60000){
     httpServer.handleClient();
     if (analogRead(A0) > 550) {
       if (old_led_state == 0) {
