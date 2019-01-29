@@ -22,25 +22,6 @@ Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301  USA
 // Letture 5 6
 // Pulsanti A1 A2
 
-bool pinUno = 0;
-bool pinUnoNew = 0;
-bool pinDue = 0;
-bool pinDueNew = 0;
-bool pinTre = 0;
-bool pinTreNew = 0;
-
-bool pinA1 = 0;
-bool pinA2 = 0;
-bool pinA3 = 0;
-bool pinA4 = 0;
-
-bool pinCinque = 0;
-bool pinSei = 0;
-bool pinSette = 0;
-bool pinCinqueNew = 0;
-bool pinSeiNew = 0;
-bool pinSetteNew = 0;
-
 int lcdBrightness = 255;
 long lastReconnectAttempt = 0;
 
@@ -53,13 +34,9 @@ String sPayload;
 String baseTopic = "/roncello/industruino/";
 
 static UC1701 lcd;
-
 #define mqtt_server "192.168.1.2"
-
 #define subscribed_topic "roncello/industruino/set/#"
-
 #define topic_lcd_brightness "roncello/salotto/set/industruino/lcdbrightness"
-
 #define topic_riscaldamento_set "roncello/riscaldamento/set/generale"
 
 // Enter a MAC address and IP address for your controller below.
@@ -86,7 +63,6 @@ public:
   }
 
   void Check() {
-
     if (millis() > _debounce + 30) {
       bool pinStatus;
       if (_analog) {
@@ -105,8 +81,8 @@ public:
           _oldpinstatus = pinStatus;
         }
       } else {
-        if (!pinStatus && _oldpinstatus) { // if pressed and was not pressed
-          _oldpinstatus = 0;
+        if (pinStatus && !_oldpinstatus) { // if pressed and was not pressed
+          _oldpinstatus = pinStatus;
           _lock = true;
           _activationTimer = millis();
         } else if (((millis() - _activationTimer) > 400) &&
@@ -114,14 +90,14 @@ public:
           _lock = false;
           Serial.println("Long press");
           _notifyChange("long");
-        } else if (pinStatus && !_oldpinstatus) { // if Let go
+        } else if (!pinStatus && _oldpinstatus) { // if Let go
           if (_lock) {                            // if still in action
-            _oldpinstatus = 1;
+            _oldpinstatus = pinStatus;
             _lock = false;
             Serial.println("Single press");
             _notifyChange("single");
           } else {
-            _oldpinstatus = 1;
+            _oldpinstatus = pinStatus;
           }
         }
       }
