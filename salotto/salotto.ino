@@ -50,9 +50,8 @@ public:
     _debounce = 4294967296; // never trigger
   }
 
-  PinManager(int pin, bool islatching, bool isanalog, String name) {
+  PinManager(int pin, bool isanalog, String name) {
     _pin = pin;
-    _latching = islatching;
     _analog = isanalog;
     _debounce = millis();
     _name = name;
@@ -66,9 +65,8 @@ public:
     }
   }
 
-  PinManager(int pin, bool islatching, bool isanalog, String name, int outpin) {
+  PinManager(int pin, bool isanalog, String name, int outpin) {
     _pin = pin;
-    _latching = islatching;
     _analog = isanalog;
     _debounce = millis();
     _name = name;
@@ -94,28 +92,23 @@ public:
       } else {
         pinStatus = Indio.digitalRead(_pin);
       }
-      if (_latching) {
-        if (pinStatus != _oldpinstatus) {
-          _notifyChange("single");
+      if (pinStatus && !_oldpinstatus) { // if pressed and was not pressed
+        _oldpinstatus = pinStatus;
+        _lock = true;
+        _activationTimer = millis();
+      } else if (((millis() - _activationTimer) > 400) &&
+                 _lock) { // If still pressed after 400 ms
+        _lock = false;
+        Serial.println("Long press");
+        _notifyChange("long");
+      } else if (!pinStatus && _oldpinstatus) { // if Let go
+        if (_lock) {                            // if still in action
           _oldpinstatus = pinStatus;
-        }
-      } else {
-        if (pinStatus && !_oldpinstatus) { // if pressed and was not pressed
-          _oldpinstatus = pinStatus;
-          _lock = true;
-          _activationTimer = millis();
-        } else if (((millis() - _activationTimer) > 400) &&
-                   _lock) { // If still pressed after 400 ms
           _lock = false;
-          _notifyChange("long");
-        } else if (!pinStatus && _oldpinstatus) { // if Let go
-          if (_lock) {                            // if still in action
-            _oldpinstatus = pinStatus;
-            _lock = false;
-            _notifyChange("single");
-          } else {
-            _oldpinstatus = pinStatus;
-          }
+          Serial.println("Single press");
+          _notifyChange("single");
+        } else {
+          _oldpinstatus = pinStatus;
         }
       }
       _debounce = millis();
@@ -137,7 +130,6 @@ public:
 protected:
   bool _lock;
   bool _oldpinstatus;
-  bool _latching;
   bool _analog;
   unsigned long _debounce;
   int _pin;
@@ -182,8 +174,12 @@ protected:
   };
 
   void _notifyChange(String event) {
-    String topic = baseTopic + "event/" + _name;
-    client.publish(topic.c_str(), event.c_str());
+    if (client.connected()) {
+      String topic = baseTopic + "event/" + _name;
+      client.publish(topic.c_str(), event.c_str());
+    } else {
+      _outpin.Toggle();
+    }
   }
   OutputPin _outpin;
 };
@@ -209,14 +205,15 @@ void callback(char *topic, byte *payload, unsigned int length) {
     }
   }
   if (sTopic == topic_riscaldamento_set) {
+    String statusTopic = "/roncello/industruino/status/riscaldamento";
     if (sPayload == "ON") {
       Indio.digitalWrite(4, HIGH);
       riscaldamentoShutdown = millis();
+      client.publish(statusTopic, "ON");
     } else {
       Indio.digitalWrite(4, LOW);
-    }
+      client.publish(statusTopic, "OFF");
     lcd.setCursor(42, 4);
-    lcd.print(String(sPayload).c_str());
     lcd.print(" ");
   }
   if (sTopic == topic_lcd_brightness) {
@@ -273,13 +270,13 @@ void setup() {
   client.setCallback(callback);
   lastReconnectAttempt = 0;
 
-  pinmanager[0] = PinManager(5, 0, 0, "salotto/est", 2);
-  pinmanager[1] = PinManager(6, 0, 0, "salotto/ovest", 1);
-  pinmanager[2] = PinManager(7, 0, 0, "cucina/led/down");
-  pinmanager[3] = PinManager(1, 0, 1, "campanello");
-  pinmanager[4] = PinManager(2, 0, 1, "cucina/soffitto", 3);
-  pinmanager[5] = PinManager(3, 0, 1, "salotto/lampade");
-  pinmanager[6] = PinManager(4, 0, 1, "cucina/led/up");
+  pinmanager[0] = PinManager(5, 0, "salotto/est", 2);
+  pinmanager[1] = PinManager(6, 0, "salotto/ovest", 1);
+  pinmanager[2] = PinManager(7, 0, "cucina/led/down");
+  pinmanager[3] = PinManager(1, 1, "campanello");
+  pinmanager[4] = PinManager(2, 1, "cucina/soffitto", 3);
+  pinmanager[5] = PinManager(3, 1, "salotto/lampade");
+  pinmanager[6] = PinManager(4, 1, "cucina/led/up");
 }
 
 void loop() {
