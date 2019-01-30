@@ -97,7 +97,6 @@ public:
       if (_latching) {
         if (pinStatus != _oldpinstatus) {
           _notifyChange("single");
-          Serial.println("Single press");
           _oldpinstatus = pinStatus;
         }
       } else {
@@ -108,13 +107,11 @@ public:
         } else if (((millis() - _activationTimer) > 400) &&
                    _lock) { // If still pressed after 400 ms
           _lock = false;
-          Serial.println("Long press");
           _notifyChange("long");
         } else if (!pinStatus && _oldpinstatus) { // if Let go
           if (_lock) {                            // if still in action
             _oldpinstatus = pinStatus;
             _lock = false;
-            Serial.println("Single press");
             _notifyChange("single");
           } else {
             _oldpinstatus = pinStatus;
@@ -195,24 +192,28 @@ PinManager pinmanager[7];
 
 void callback(char *topic, byte *payload, unsigned int length) {
   String sTopic = topic;
+  sTopic = sTopic.substring(26);
   String sPayload = "";
 
-  for (int i = 26; i < length; i++) {
+  for (int i = 0; i < length; i++) {
     sPayload += (char)payload[i];
   }
 
+  Serial.println(sTopic);
+
   for (int i = 0; i < 7; i++) {
+    Serial.println(pinmanager[i].getName());
     if (sTopic == pinmanager[i].getName()) {
       pinmanager[i].mqttManager(sPayload);
+      break;
     }
-    break;
   }
-  if (sTopic == topic_riscaldamento_set) {  
-    if (sPayload == "ON"){
-      Indio.digitalWrite(4,HIGH);
+  if (sTopic == topic_riscaldamento_set) {
+    if (sPayload == "ON") {
+      Indio.digitalWrite(4, HIGH);
       riscaldamentoShutdown = millis();
     } else {
-      Indio.digitalWrite(4,LOW);
+      Indio.digitalWrite(4, LOW);
     }
     lcd.setCursor(42, 4);
     lcd.print(String(sPayload).c_str());
@@ -231,12 +232,10 @@ boolean reconnect() {
     lcd.print("Connected    ");
     Serial.println("connected");
     client.subscribe(subscribed_topic);
-    client.subscribe(topic_riscaldamento_set);
     analogWrite(13, lcdBrightness);
   } else {
     Serial.print("failed, rc=");
     Serial.print(client.state());
-    Serial.println(" try again in 10 seconds");
     lcd.setCursor(30, 0);
     lcd.print("FAILED       ");
   }
@@ -293,7 +292,7 @@ void loop() {
       lcd.print("MQTT:");
       lcd.setCursor(30, 0);
       lcd.print("Connecting...");
-      Serial.print("Attempting MQTT connection...");
+      Serial.print("Connecting");
       lastReconnectAttempt = now;
       // Attempt to connect
       if (reconnect()) {
@@ -306,7 +305,7 @@ void loop() {
     pinmanager[i].Check();
   }
 
-  if (Indio.digitalRead(4) && ((millis() - riscaldamentoShutdown) > 7200000)){
+  if (Indio.digitalRead(4) && ((millis() - riscaldamentoShutdown) > 7200000)) {
     Indio.digitalWrite(4, LOW);
   }
 
