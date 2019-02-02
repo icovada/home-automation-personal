@@ -1,4 +1,5 @@
 #include <ArduinoJson.h>
+#include <DallasTemperature.h>
 #include <ESP8266HTTPUpdateServer.h>
 #include <ESP8266WebServer.h>
 #include <ESP8266WiFi.h>
@@ -6,8 +7,8 @@
 #include <PubSubClient.h>
 #include <WiFiClient.h>
 
-#define wifi_ssid "ssid"
-#define wifi_password "password"
+#define wifi_ssid "Pinguino Curioso"
+#define wifi_password "Martina1/2"
 
 #define mqtt_server "192.168.1.2"
 #define mqtt_id "heating_flow_sensor_new"
@@ -15,6 +16,7 @@
 #define BAUDRATE 115200
 
 OneWire ds(D4);
+DallasTemperature sensors(&ds);
 
 byte sensorlist[10][8] = {{0x28, 0xFF, 0xFD, 0x09, 0x60, 0x18, 0x03, 0x4C},
                           {0x10, 0x44, 0xBA, 0x59, 0x03, 0x08, 0x00, 0x79},
@@ -135,6 +137,11 @@ void setup() {
 
   setup_wifi();
   client.setServer(mqtt_server, 1883);
+
+  sensors.begin();
+  for (int i = 0; i < 10; i++) {
+    sensors.setResolution(sensorlist[i], 12);
+  }
 
   httpUpdater.setup(&httpServer);
   httpServer.begin();
