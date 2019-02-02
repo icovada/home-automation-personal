@@ -173,138 +173,141 @@ protected:
     bool _pinstatus;
   };
 
+  OutputPin _outpin;
+
   void _notifyChange(String event) {
     if (client.connected()) {
       String topic = baseTopic + "event/" + _name;
       client.publish(topic.c_str(), event.c_str());
     } else {
-      _outpin.Toggle();
+      _outpin.Toggle(_name);
     }
   }
-  OutputPin _outpin;
 };
 
 PinManager pinmanager[7];
 
 void callback(char *topic, byte *payload, unsigned int length) {
   String sTopic = topic;
+  sTopic = sTopic.substring(26);
   String sPayload = "";
 
-  for (int i = 26; i < length; i++) {
+  for (int i = 0; i < length; i++) {
     sPayload += (char)payload[i];
   }
 
+  Serial.println(sTopic);
+
   for (int i = 0; i < 7; i++) {
+    Serial.println(pinmanager[i].getName());
     if (sTopic == pinmanager[i].getName()) {
       pinmanager[i].mqttManager(sPayload);
+      break;
     }
-    break;
   }
   if (sTopic == topic_riscaldamento_set) {
     String statusTopic = "/roncello/industruino/status/riscaldamento";
     if (sPayload == "ON") {
       Indio.digitalWrite(4, HIGH);
       riscaldamentoShutdown = millis();
-      client.publish(statusTopic, "ON");
+      client.publish(statusTopic.c_str(), "ON");
     } else {
       Indio.digitalWrite(4, LOW);
-      client.publish(statusTopic, "OFF");
+      client.publish(statusTopic.c_str(), "OFF");
+      lcd.setCursor(42, 4);
+      lcd.print(" ");
     }
-    lcd.setCursor(42, 4);
-    lcd.print(String(sPayload).c_str());
-    lcd.print(" ");
-  }
-  if (sTopic == topic_lcd_brightness) {
-    lcdBrightness = map(sPayload.toInt(), 0, 100, 255, 0);
-    analogWrite(13, lcdBrightness);
+    if (sTopic == topic_lcd_brightness) {
+      lcdBrightness = map(sPayload.toInt(), 0, 100, 255, 0);
+      analogWrite(13, lcdBrightness);
+    }
   }
 }
 
-boolean reconnect() {
-  // Loop until we're reconnected
-  if (client.connect("industruino")) {
-    lcd.setCursor(30, 0);
-    lcd.print("Connected    ");
-    Serial.println("connected");
-    client.subscribe(subscribed_topic);
-    client.subscribe(topic_riscaldamento_set);
-    analogWrite(13, lcdBrightness);
-  } else {
-    Serial.print("failed, rc=");
-    Serial.print(client.state());
-    Serial.println(" try again in 10 seconds");
-    lcd.setCursor(30, 0);
-    lcd.print("FAILED       ");
-  }
-}
-
-void setup() {
-  lcd.begin();
-  lcd.setCursor(0, 0);
-  lcd.print("Booting...");
-  pinMode(10, OUTPUT); // change this to 53 on a mega
-  pinMode(4, OUTPUT);  // change this to 53 on a mega
-  pinMode(6, OUTPUT);  // change this to 53 on a mega
-  pinMode(13, OUTPUT);
-  digitalWrite(10, HIGH);
-  digitalWrite(6, HIGH);
-  digitalWrite(4, HIGH);
-  digitalWrite(13, LOW);
-  Serial.begin(9600);
-  Serial.println("Vai");
-
-  // Open serial communications and wait for port to open:
-  Ethernet.begin(mac, ip);
-
-  delay(5000);
-  Serial.println("Ci siamo");
-
-  Indio.setADCResolution(12);
-
-  // OUTPUTS
-  Indio.digitalMode(4, OUTPUT); // Riscaldamento
-  Indio.digitalWrite(4, LOW);
-
-  client.setClient(ethClient);
-  client.setServer(mqtt_server, 1883);
-  client.setCallback(callback);
-  lastReconnectAttempt = 0;
-
-  pinmanager[0] = PinManager(5, 0, "salotto/est", 2);
-  pinmanager[1] = PinManager(6, 0, "salotto/ovest", 1);
-  pinmanager[2] = PinManager(7, 0, "cucina/led/down");
-  pinmanager[3] = PinManager(1, 1, "campanello");
-  pinmanager[4] = PinManager(2, 1, "cucina/soffitto", 3);
-  pinmanager[5] = PinManager(3, 1, "salotto/lampade");
-  pinmanager[6] = PinManager(4, 1, "cucina/led/up");
-}
-
-void loop() {
-  if (!client.connected()) {
-    long now = millis();
-    if (now - lastReconnectAttempt > 10000) {
-      digitalWrite(13, LOW);
-      lcd.clear();
-      lcd.setCursor(0, 0);
-      lcd.print("MQTT:");
+  boolean reconnect() {
+    // Loop until we're reconnected
+    if (client.connect("industruino")) {
       lcd.setCursor(30, 0);
-      lcd.print("Connecting...");
-      Serial.print("Attempting MQTT connection...");
-      lastReconnectAttempt = now;
-      // Attempt to connect
-      if (reconnect()) {
-        lastReconnectAttempt = 0;
+      lcd.print("Connected    ");
+      Serial.println("connected");
+      client.subscribe(subscribed_topic);
+      analogWrite(13, lcdBrightness);
+    } else {
+      Serial.print("failed, rc=");
+      Serial.print(client.state());
+      lcd.setCursor(30, 0);
+      lcd.print("FAILED       ");
+    }
+  }
+
+  void setup() {
+    lcd.begin();
+    lcd.setCursor(0, 0);
+    lcd.print("Booting...");
+    pinMode(10, OUTPUT); // change this to 53 on a mega
+    pinMode(4, OUTPUT);  // change this to 53 on a mega
+    pinMode(6, OUTPUT);  // change this to 53 on a mega
+    pinMode(13, OUTPUT);
+    digitalWrite(10, HIGH);
+    digitalWrite(6, HIGH);
+    digitalWrite(4, HIGH);
+    digitalWrite(13, LOW);
+    Serial.begin(9600);
+    Serial.println("Vai");
+
+    // Open serial communications and wait for port to open:
+    Ethernet.begin(mac, ip);
+
+    delay(5000);
+    Serial.println("Ci siamo");
+
+    Indio.setADCResolution(12);
+
+    // OUTPUTS
+    Indio.digitalMode(4, OUTPUT); // Riscaldamento
+    Indio.digitalWrite(4, LOW);
+
+    client.setClient(ethClient);
+    client.setServer(mqtt_server, 1883);
+    client.setCallback(callback);
+    lastReconnectAttempt = 0;
+
+    pinmanager[0] = PinManager(5, 0, "salotto/est", 2);
+    pinmanager[1] = PinManager(6, 0, "salotto/ovest", 1);
+    pinmanager[2] = PinManager(7, 0, "cucina/led/down");
+    pinmanager[3] = PinManager(1, 1, "campanello");
+    pinmanager[4] = PinManager(2, 1, "cucina/soffitto", 3);
+    pinmanager[5] = PinManager(3, 1, "salotto/lampade");
+    pinmanager[6] = PinManager(4, 1, "cucina/led/up");
+  }
+
+  void loop() {
+    if (!client.connected()) {
+      long now = millis();
+      if (now - lastReconnectAttempt > 10000) {
+        digitalWrite(13, LOW);
+        lcd.clear();
+        lcd.setCursor(0, 0);
+        lcd.print("MQTT:");
+        lcd.setCursor(30, 0);
+        lcd.print("Connecting...");
+        Serial.print("Connecting");
+        lastReconnectAttempt = now;
+        // Attempt to connect
+        if (reconnect()) {
+          lastReconnectAttempt = 0;
+        }
       }
     }
-  }
 
-  for (int i = 0; i < 7; i++) {
-    pinmanager[i].Check();
-  }
+    for (int i = 0; i < 7; i++) {
+      pinmanager[i].Check();
+    }
 
-  if (Indio.digitalRead(4) && ((millis() - riscaldamentoShutdown) > 7200000)) {
-    Indio.digitalWrite(4, LOW);
-  }
+    if (Indio.digitalRead(4) &&
+        ((millis() - riscaldamentoShutdown) > 7200000)) {
+      Indio.digitalWrite(4, LOW);
+    }
 
-  client.loop();
-}
+    client.loop();
+  }
