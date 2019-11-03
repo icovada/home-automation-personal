@@ -71,6 +71,7 @@ public:
           _notifyChange("single");
         } else {
           _oldpinstatus = pinStatus;
+          _notifyChange("letgo");
         }
       }
       _debounce = millis();
