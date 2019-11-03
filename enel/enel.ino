@@ -75,8 +75,8 @@ void setup() {
 // loop
 // ---------------------------------------------------------------------------------------|
 void loop() {
-  // controllo connessione mqtt
-  // -------------------------------------------------------------|
+if (!client.connected()) {
+      long now = millis();
 
   oldMillis = millis();
 
