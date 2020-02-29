@@ -10,7 +10,8 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software Foundation,
 Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301  USA
-*/                                                                                         //
+*/
+//
 
 #include <ESP8266HTTPClient.h>
 #include <ESP8266HTTPUpdateServer.h>
@@ -21,11 +22,6 @@ Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301  USA
 
 #define wifi_ssid "ssid"
 #define wifi_password "password"
-
-#define mqtt_server "192.168.1.2"
-#define mqtt_id "contatore_palazzo"
-
-#define topic_watt "roncello/palazzo/generale/watt/pulse"
 
 int minute_blips = 0;
 bool old_led_state = 0;
@@ -41,7 +37,8 @@ HTTPClient http;
 
 // connessione WiFi
 // ---------------------------------------------------------------------------|
-void setup_wifi() {
+void setup_wifi()
+{
   delay(10);
   Serial.println("///////////////// - WiFi - /////////////////");
   Serial.print("Connessione a ");
@@ -49,7 +46,8 @@ void setup_wifi() {
   WiFi.mode(WIFI_STA);
   WiFi.hostname("contatore_palazzo");
   WiFi.begin(wifi_ssid, wifi_password);
-  while (WiFi.status() != WL_CONNECTED) {
+  while (WiFi.status() != WL_CONNECTED)
+  {
     delay(500);
     Serial.print(".");
   }
@@ -62,7 +60,8 @@ void setup_wifi() {
 
 // setup
 // --------------------------------------------------------------------------------------|
-void setup() {
+void setup()
+{
   pinMode(A0, INPUT);
 
   Serial.begin(115200);
@@ -74,30 +73,32 @@ void setup() {
 
 // loop
 // ---------------------------------------------------------------------------------------|
-void loop() {
-if (!client.connected()) {
-      long now = millis();
-
+void loop()
+{
   oldMillis = millis();
 
-  while ((millis() - oldmillis) < 60000){
+  while ((millis() - oldMillis) < 60000)
+  {
     httpServer.handleClient();
-    if (analogRead(A0) > 550) {
-      if (old_led_state == 0) {
+    if (analogRead(A0) > 550)
+    {
+      if (old_led_state == 0)
+      {
         minute_blips = minute_blips + 1;
         old_led_state = 1;
         Serial.println("Blip");
       }
-    } else {
+    }
+    else
+    {
       old_led_state = 0;
     }
     delay(50);
   }
   Serial.println("Minute");
-  http.begin("http://192.168.1.2/emoncms/input/post.json?node=3&json={'Watt':" +
-             String(minute_blips) +
-             "}&apikey=5a8504496b87a071442b5d2642123fe9");
-  http.GET();
+  http.begin("http://192.168.1.2:8086/write?db=contatore");
+  http.addHeader("Content-Type", "application/octet-stream");
+  http.POST("blips,entity=contatore_palazzo value=" + String(minute_blips));
   minute_blips = 0;
   http.end();
 }
