@@ -10,7 +10,7 @@ EthernetServer server(80);
 
 aREST_UI rest = aREST_UI();
 
-const char* jsonConfig = "{\"net\"{\"ip\":[192,168,1,6],\"mask\":[255,255,255,0],\"gw\":[192,168,1,1],\"dns\":[192,168,1,1],\"mac\":\"001020304050\"},\"mqtt\":\"mqtt.in.tabbo.it\"}";
+const char* jsonConfig = "{\"net\":{\"ip\":[192,168,1,6],\"mask\":[255,255,255,0],\"gw\":[192,168,1,1],\"dns\":[192,168,1,1],\"mac\":\"001020304050\"},\"mqtt\":\"mqtt.in.tabbo.it\"}";
 
 void saveJsonToEEPROM(const char* json, int startAddr = 0) {
   int len = strlen(json);
