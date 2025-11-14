@@ -181,7 +181,7 @@ PinManager pinmanager[7];
 
 void callback(char *topic, byte *payload, unsigned int length) {
   String sTopic = topic;
-  sTopic = sTopic.substring(26);
+  sTopic = sTopic.substring(21);
   String sPayload = "";
 
   for (int i = 0; i < length; i++) {
