@@ -8,6 +8,8 @@
 #include <PubSubClient.h>
 
 EthernetServer ethServer(80);
+EthernetClient ethMqttClient;
+PubSubClient mqttClient(ethMqttClient);
 
 aREST rest = aREST();
 
@@ -111,15 +113,15 @@ void setup() {
 
 
 void loop() {
-  EthernetClient client = ethServer.available();
+  EthernetClient httpClient = ethServer.available();
 
-  if (!client) {
+  if (!httpClient) {
     return;
   }
 
-  while (!client.available()) {
+  while (!httpClient.available()) {
     delay(1);
   }
 
-  rest.handle(client);
+  rest.handle(httpClient);
 }
