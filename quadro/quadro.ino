@@ -14,6 +14,7 @@ PubSubClient mqttClient(ethMqttClient);
 aREST rest = aREST();
 
 const char* jsonConfig = "{\"net\":{\"ip\":[192,168,1,6],\"mask\":[255,255,255,0],\"gw\":[192,168,1,1],\"dns\":[192,168,1,1],\"mac\":\"001020304050\"},\"mqtt\":\"mqtt.in.tabbo.it\"}";
+long lastReconnectAttempt = 0;
 
 void saveJsonToEEPROM(const char* json, int startAddr = 0) {
   int len = strlen(json);
@@ -58,6 +59,26 @@ IPAddress parseIPAddress(JsonArrayConst address) {
   );
 }
 
+void callback(char* topic, byte* payload, unsigned int length) {
+  Serial.print("Message arrived [");
+  Serial.print(topic);
+  Serial.print("] ");
+  for (unsigned int i = 0; i < length; i++) {
+    Serial.print((char)payload[i]);
+  }
+  Serial.println();
+}
+
+boolean mqttReconnect() {
+  if (mqttClient.connect("arduinoClient")) {
+    // Once connected, publish an announcement...
+    mqttClient.publish("outTopic","hello world");
+    // ... and resubscribe
+    mqttClient.subscribe("inTopic");
+  }
+  return mqttClient.connected();
+}
+
 void setup() {
 
   Serial.begin(9600);  
@@ -94,6 +115,8 @@ void setup() {
     Ethernet.begin(mac, ip, dns, gw, mask);
   }
 
+  delay(1500);
+
 
   if (Ethernet.linkStatus() == LinkOFF) {
     Serial.println("Ethernet cable is not connected.");
@@ -106,7 +129,11 @@ void setup() {
   rest.function("reset", resetController);
   ethServer.begin();
 
+  mqttClient.setServer(doc["mqtt"].as<const char*>(), 1883);
+  mqttClient.setCallback(callback);
+
   Serial.println("End");
+    lastReconnectAttempt = 0;
 
 
 }
@@ -115,13 +142,19 @@ void setup() {
 void loop() {
   EthernetClient httpClient = ethServer.available();
 
-  if (!httpClient) {
-    return;
+  if (httpClient && httpClient.available()) {
+    rest.handle(httpClient);
   }
 
-  while (!httpClient.available()) {
-    delay(1);
+  if (!mqttClient.connected()) {
+    long now = millis();
+    if (now - lastReconnectAttempt > 5000) {
+      lastReconnectAttempt = now;
+      if (mqttReconnect()) {
+        lastReconnectAttempt = 0;
+      }
+    }
+  } else {
+    mqttClient.loop();
   }
-
-  rest.handle(httpClient);
 }
