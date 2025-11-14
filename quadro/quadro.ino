@@ -2,13 +2,13 @@
 #include <SPI.h>
 #include <Ethernet.h>
 #include <aREST.h>
-#include <aREST_UI.h>
 #include <EEPROM.h>
 #include <ArduinoJson.h> // https://arduinojson.org/
+#include <avr/wdt.h>
 
 EthernetServer server(80);
 
-aREST_UI rest = aREST_UI();
+aREST rest = aREST();
 
 const char* jsonConfig = "{\"net\":{\"ip\":[192,168,1,6],\"mask\":[255,255,255,0],\"gw\":[192,168,1,1],\"dns\":[192,168,1,1],\"mac\":\"001020304050\"},\"mqtt\":\"mqtt.in.tabbo.it\"}";
 
@@ -38,6 +38,12 @@ void parseMacAddress(const char* macStr, byte* macArray) {
     char hex[3] = {macStr[i*2], macStr[i*2 + 1], '\0'};
     macArray[i] = (byte)strtol(hex, NULL, 16);
   }
+}
+
+int resetController(String command) {
+  wdt_enable(WDTO_15MS);
+  while(1) {}
+  return 1; // Never reached
 }
 
 IPAddress parseIPAddress(JsonArrayConst address) {
@@ -90,15 +96,11 @@ void setup() {
     Serial.println("Ethernet cable is not connected.");
   }
 
-  // Set the title
-  rest.title("aREST UI Demo");
-
   // Create button to control pin 5
-  rest.button(CONTROLLINO_R1);
-  rest.button(CONTROLLINO_R2);
   rest.set_id("1");
-  rest.set_name("esp8266");
+  rest.set_name("quadro");
 
+  rest.function("reset", resetController);
   server.begin();
 
   Serial.println("End");
