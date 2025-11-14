@@ -71,6 +71,7 @@ void callback(char* topic, byte* payload, unsigned int length) {
 
 boolean mqttReconnect() {
   if (mqttClient.connect("arduinoClient")) {
+    Serial.println("MQTT connected");
     // Once connected, publish an announcement...
     mqttClient.publish("outTopic","hello world");
     // ... and resubscribe
@@ -84,8 +85,8 @@ void setup() {
   Serial.begin(9600);  
   Serial.println("Start");
 
-  Serial.println("Writing JSON to EEPROM");
-  //saveJsonToEEPROM(jsonConfig);
+  // Serial.println("Writing JSON to EEPROM");
+  //  saveJsonToEEPROM(jsonConfig);
   
   String config = readJsonFromEEPROM();
   JsonDocument jsonConfig;
@@ -149,6 +150,7 @@ void loop() {
   if (!mqttClient.connected()) {
     long now = millis();
     if (now - lastReconnectAttempt > 5000) {
+      Serial.println("Trying to connect to MQTT...");
       lastReconnectAttempt = now;
       if (mqttReconnect()) {
         lastReconnectAttempt = 0;
