@@ -5,8 +5,9 @@
 #include <EEPROM.h>
 #include <ArduinoJson.h> // https://arduinojson.org/
 #include <avr/wdt.h>
+#include <PubSubClient.h>
 
-EthernetServer server(80);
+EthernetServer ethServer(80);
 
 aREST rest = aREST();
 
@@ -101,7 +102,7 @@ void setup() {
   rest.set_name("quadro");
 
   rest.function("reset", resetController);
-  server.begin();
+  ethServer.begin();
 
   Serial.println("End");
 
@@ -110,7 +111,7 @@ void setup() {
 
 
 void loop() {
-  EthernetClient client = server.available();
+  EthernetClient client = ethServer.available();
 
   if (!client) {
     return;
