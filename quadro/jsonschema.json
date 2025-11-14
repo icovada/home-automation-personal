@@ -1,0 +1,59 @@
+{
+  "$schema": "http://json-schema.org/draft-04/schema#",
+  "description": "",
+  "type": "object",
+  "properties": {
+    "net": {
+      "type": "object",
+      "properties": {
+        "ip": {
+          "type": "array",
+          "items": {
+            "required": [],
+            "properties": {}
+          }
+        },
+        "mask": {
+          "type": "array",
+          "items": {
+            "required": [],
+            "properties": {}
+          }
+        },
+        "gw": {
+          "type": "array",
+          "items": {
+            "required": [],
+            "properties": {}
+          }
+        },
+        "dns": {
+          "type": "array",
+          "items": {
+            "required": [],
+            "properties": {}
+          }
+        },
+        "mac": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "required": [
+        "ip",
+        "mask",
+        "gw",
+        "dns",
+        "mac"
+      ]
+    },
+    "mqtt": {
+      "type": "string",
+      "minLength": 1
+    }
+  },
+  "required": [
+    "net",
+    "mqtt"
+  ]
+}
