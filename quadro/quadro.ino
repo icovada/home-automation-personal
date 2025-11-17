@@ -1,16 +1,13 @@
 #include <Controllino.h>
 #include <SPI.h>
 #include <Ethernet.h>
-#define DEBUG_MODE 1
 #include <aREST.h>
 #include <EEPROM.h>
 #include <ArduinoJson.h> // https://arduinojson.org/
 #include <avr/wdt.h>
 #include <PubSubClient.h>
 
-#ifndef DEBUG_MODE
-#define DEBUG_MODE 0
-#endif
+#define DEBUG_MODE 1
 
 EthernetServer ethServer(80);
 EthernetClient ethMqttClient;
@@ -20,10 +17,10 @@ String mqtt_server;
 
 aREST rest = aREST();
 
-const String jsonConfig = "{\"net\":{\"ip\":[192,168,1,6],\"mask\":[255,255,255,0],\"gw\":[192,168,1,1],\"dns\":[192,168,1,1],\"mac\":\"001020304050\"},\"mqtt\":\"mqtt.in.tabbo.it\"}";
+String jsonConfig = "{\"net\":{\"ip\":[192,168,1,6],\"mask\":[255,255,255,0],\"gw\":[192,168,1,1],\"dns\":[192,168,1,1],\"mac\":\"001020304050\"},\"mqtt\":\"mqtt.in.tabbo.it\"}";
 long lastReconnectAttempt = 0;
 
-void saveJsonToEEPROM(const char* json, int startAddr = 0) {
+void saveJsonToEEPROM(char* json, int startAddr = 0) {
   int len = strlen(json);
   EEPROM.write(startAddr, len); // Store length first
   
@@ -122,10 +119,11 @@ void setup() {
 
   // Register custom functions
   rest.function("reset", resetController);
-  rest.function("setDigital", setDigitalPin);
-  rest.function("getDigital", getDigitalPin);
-  rest.function("setAnalog", setAnalogPin);
-  rest.function("getAnalog", getAnalogPin);
+  rest.function("replace_config", replaceConfig);
+  rest.function("set_digital", setDigitalPin);
+  rest.function("get_digital", getDigitalPin);
+  rest.function("set_analog", setAnalogPin);
+  rest.function("get_analog", getAnalogPin);
   ethServer.begin();
 
   mqttClient.setServer(doc["mqtt"].as<const char*>(), 1883);
