@@ -6,13 +6,15 @@
 #include <ArduinoJson.h> // https://arduinojson.org/
 #include <avr/wdt.h>
 #include <PubSubClient.h>
+#include <ArduinoHA.h> // https://github.com/dawidchyrzynski/arduino-home-assistant/
 
 #define DEBUG_MODE 1
 
 EthernetServer ethServer(80);
 EthernetClient ethMqttClient;
 EthernetClient httpClient;
-PubSubClient mqttClient(ethMqttClient);
+HADevice device("quadro", sizeof("quadro"));
+HAMqtt mqtt(ethMqttClient, device);
 String mqtt_server;
 
 aREST rest = aREST();
@@ -57,7 +59,10 @@ IPAddress parseIPAddress(JsonArrayConst address) {
   );
 }
 
-void callback(char* topic, byte* payload, unsigned int length) {
+void onMqttMessage(char* topic, byte* payload, unsigned int length) {
+  // This callback is called when message from MQTT broker is received.
+  // Please note that you should always verify if the message's topic is the one you expect.
+  // For example: if (memcmp(topic, "myCustomTopic") == 0) { ... }
   if (DEBUG_MODE) {
     Serial.print("Message arrived [");
     Serial.print(topic);
@@ -69,15 +74,6 @@ void callback(char* topic, byte* payload, unsigned int length) {
   }
 }
 
-boolean mqttReconnect() {
-  if (mqttClient.connect("arduinoClient")) {
-    if (DEBUG_MODE){
-      Serial.println("MQTT connected");
-    }
-  }
-  return mqttClient.connected();
-}
-
 void setup() {
 
   Serial.begin(9600);  
@@ -85,7 +81,7 @@ void setup() {
 
   // Serial.println("Writing JSON to EEPROM");
   //  saveJsonToEEPROM(jsonConfig);
-  
+
   String config = readJsonFromEEPROM();
   JsonDocument jsonConfig;
 
@@ -126,30 +122,16 @@ void setup() {
   rest.function("get_analog", getAnalogPin);
   ethServer.begin();
 
-  mqttClient.setServer(doc["mqtt"].as<const char*>(), 1883);
-  mqttClient.setCallback(callback);
+  mqtt.onMessage(onMqttMessage);
+  mqtt.begin(doc["mqtt"].as<const char*>());
 
   Serial.println("End");
   lastReconnectAttempt = 0;
 }
 
-
 void loop() {
   httpClient = ethServer.available();
   rest.handle(httpClient);
 
-  if (!mqttClient.connected()) {
-    long now = millis();
-    if (now - lastReconnectAttempt > 5000) {
-      if (DEBUG_MODE) {
-        Serial.println("Trying to connect to MQTT...");
-      }
-      lastReconnectAttempt = now;
-      if (mqttReconnect()) {
-        lastReconnectAttempt = 0;
-      }
-    }
-  } else {
-    mqttClient.loop();
-  }
+  mqtt.loop();
 }

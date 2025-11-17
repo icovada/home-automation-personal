@@ -34,13 +34,9 @@ int setDigitalPin(String command) {
   digitalWrite(pin, value);
 
   // Publish to MQTT
-  if (mqttClient.connected()) {
-    String topic = "quadro/digital/" + String(pin);
-    String payload = String(value);
-    mqttClient.publish(topic.c_str(), payload.c_str());
-  } else {
-    Serial.println("Warning: MQTT not connected, state not published");
-  }
+  String topic = "quadro/digital/" + String(pin);
+  String payload = String(value);
+  mqtt.publish(topic.c_str(), payload.c_str());
 
   return 1; // Success
 }
@@ -66,11 +62,9 @@ int getDigitalPin(String command) {
   }
 
   // Publish to MQTT
-  if (mqttClient.connected()) {
-    String topic = "quadro/digital/" + String(pin);
-    String payload = String(value);
-    mqttClient.publish(topic.c_str(), payload.c_str());
-  }
+  String topic = "quadro/digital/" + String(pin);
+  String payload = String(value);
+  mqtt.publish(topic.c_str(), payload.c_str());
 
   return value;
 }
@@ -101,17 +95,13 @@ int setAnalogPin(String command) {
   analogWrite(pin, value);
 
   // Publish to MQTT
-  if (mqttClient.connected()) {
-    String topic = "quadro/analog/" + String(pin);
-    String payload = String(value);
-    mqttClient.publish(topic.c_str(), payload.c_str());
-    Serial.print("Published to MQTT: ");
-    Serial.print(topic);
-    Serial.print(" = ");
-    Serial.println(payload);
-  } else {
-    Serial.println("Warning: MQTT not connected, state not published");
-  }
+  String topic = "quadro/analog/" + String(pin);
+  String payload = String(value);
+  mqtt.publish(topic.c_str(), payload.c_str());
+  Serial.print("Published to MQTT: ");
+  Serial.print(topic);
+  Serial.print(" = ");
+  Serial.println(payload);
 
   return 1; // Success
 }
@@ -128,11 +118,9 @@ int getAnalogPin(String command) {
   Serial.println(value);
 
   // Publish to MQTT
-  if (mqttClient.connected()) {
-    String topic = "quadro/analog/" + String(pin);
-    String payload = String(value);
-    mqttClient.publish(topic.c_str(), payload.c_str());
-  }
+  String topic = "quadro/analog/" + String(pin);
+  String payload = String(value);
+  mqtt.publish(topic.c_str(), payload.c_str());
 
   return value;
 }
