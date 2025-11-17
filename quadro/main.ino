@@ -61,22 +61,22 @@ IPAddress parseIPAddress(JsonArrayConst address) {
 }
 
 void callback(char* topic, byte* payload, unsigned int length) {
-  Serial.print("Message arrived [");
-  Serial.print(topic);
-  Serial.print("] ");
-  for (unsigned int i = 0; i < length; i++) {
-    Serial.print((char)payload[i]);
+  if (DEBUG_MODE) {
+    Serial.print("Message arrived [");
+    Serial.print(topic);
+    Serial.print("] ");
+    for (unsigned int i = 0; i < length; i++) {
+      Serial.print((char)payload[i]);
+    }
+    Serial.println();
   }
-  Serial.println();
 }
 
 boolean mqttReconnect() {
   if (mqttClient.connect("arduinoClient")) {
-    Serial.println("MQTT connected");
-    // Once connected, publish an announcement...
-    mqttClient.publish("outTopic","hello world");
-    // ... and resubscribe
-    mqttClient.subscribe("inTopic");
+    if (DEBUG_MODE){
+      Serial.println("MQTT connected");
+    }
   }
   return mqttClient.connected();
 }
@@ -143,7 +143,9 @@ void loop() {
   if (!mqttClient.connected()) {
     long now = millis();
     if (now - lastReconnectAttempt > 5000) {
-      Serial.println("Trying to connect to MQTT...");
+      if (DEBUG_MODE) {
+        Serial.println("Trying to connect to MQTT...");
+      }
       lastReconnectAttempt = now;
       if (mqttReconnect()) {
         lastReconnectAttempt = 0;
