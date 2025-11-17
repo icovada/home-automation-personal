@@ -1,6 +1,7 @@
 #include <Controllino.h>
 #include <SPI.h>
 #include <Ethernet.h>
+#define DEBUG_MODE 1
 #include <aREST.h>
 #include <EEPROM.h>
 #include <ArduinoJson.h> // https://arduinojson.org/
@@ -9,7 +10,9 @@
 
 EthernetServer ethServer(80);
 EthernetClient ethMqttClient;
+EthernetClient httpClient;
 PubSubClient mqttClient(ethMqttClient);
+String mqtt_server;
 
 aREST rest = aREST();
 
@@ -116,14 +119,6 @@ void setup() {
     Ethernet.begin(mac, ip, dns, gw, mask);
   }
 
-  delay(1500);
-
-
-  if (Ethernet.linkStatus() == LinkOFF) {
-    Serial.println("Ethernet cable is not connected.");
-  }
-
-  // Create button to control pin 5
   rest.set_id("1");
   rest.set_name("quadro");
 
@@ -134,18 +129,13 @@ void setup() {
   mqttClient.setCallback(callback);
 
   Serial.println("End");
-    lastReconnectAttempt = 0;
-
-
+  lastReconnectAttempt = 0;
 }
 
 
 void loop() {
-  EthernetClient httpClient = ethServer.available();
-
-  if (httpClient && httpClient.available()) {
-    rest.handle(httpClient);
-  }
+  httpClient = ethServer.available();
+  rest.handle(httpClient);
 
   if (!mqttClient.connected()) {
     long now = millis();
