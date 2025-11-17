@@ -20,7 +20,7 @@ String mqtt_server;
 
 aREST rest = aREST();
 
-const char* jsonConfig = "{\"net\":{\"ip\":[192,168,1,6],\"mask\":[255,255,255,0],\"gw\":[192,168,1,1],\"dns\":[192,168,1,1],\"mac\":\"001020304050\"},\"mqtt\":\"mqtt.in.tabbo.it\"}";
+const String jsonConfig = "{\"net\":{\"ip\":[192,168,1,6],\"mask\":[255,255,255,0],\"gw\":[192,168,1,1],\"dns\":[192,168,1,1],\"mac\":\"001020304050\"},\"mqtt\":\"mqtt.in.tabbo.it\"}";
 long lastReconnectAttempt = 0;
 
 void saveJsonToEEPROM(const char* json, int startAddr = 0) {
