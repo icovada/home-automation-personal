@@ -4,6 +4,9 @@
 #define DEBUG_MODE 0
 #endif
 
+// Forward declaration of function defined in quadro.ino
+void saveJsonToEEPROM(char* json, int startAddr = 0);
+
 int resetController(String command) {
   wdt_enable(WDTO_15MS);
   while (1) {}

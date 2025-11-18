@@ -9,6 +9,7 @@
 #include <ArduinoHA.h> // https://github.com/dawidchyrzynski/arduino-home-assistant/
 #include <ArduinoHttpClient.h>
 #include "pin_manager.h"
+#include "rest_functions.h"
 
 #define DEBUG_MODE 1
 
