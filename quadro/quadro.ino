@@ -21,10 +21,11 @@ HADevice device("quadro", sizeof("quadro"));
 HAMqtt mqtt(ethMqttClient, device);
 String mqtt_server;
 
-PinManager* manager;
+PinManager manager[2];
 HABinarySensor shortsensor("short");
 HABinarySensor longsensor("long");
-
+HABinarySensor shortsensor2("short2");
+HABinarySensor longsensor2("long2");
 
 aREST rest = aREST();
 
@@ -125,8 +126,11 @@ void setup() {
 
   shortsensor.setName("Controllino Test Short");
   longsensor.setName("Controllino Test Long");
+  shortsensor2.setName("Controllino Test Short2");
+  longsensor2.setName("Controllino Test Long2");
 
-  manager = new PinManager(CONTROLLINO_A0, true, &shortsensor, &longsensor);
+  manager[0] = PinManager(CONTROLLINO_A0, true, &shortsensor, &longsensor);
+  manager[1] = PinManager(CONTROLLINO_A1, true, &shortsensor2, &longsensor2);
 
   // Register custom functions
   rest.function("reset", resetController);
@@ -150,4 +154,8 @@ void loop() {
   rest.handle(httpRestClient);
 
   mqtt.loop();
+
+  for (int i=0;i<2;i++){
+    manager[i].check();
+  }
 }
