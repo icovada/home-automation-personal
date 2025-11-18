@@ -1,4 +1,13 @@
 class PinManager{
+  protected:
+    int _pin = 0;
+    bool _lock = false;
+    bool _oldpinstatus = false;
+    bool _analog = false;
+    unsigned long _debounce = 50;
+    uint32_t _activationTimer = 0;
+    String _name = "fake";
+
   public:
   PinManager() {}
 
@@ -12,6 +21,11 @@ class PinManager{
   }
 
   void check() {
+    if (_pin == 0) {
+      // this instance does not have a pin input
+      // such as a relay whose button is on another PLC
+      return;
+    }
     if (millis() > _debounce + 30){
       bool pinStatus;
       if (_analog) {
@@ -52,13 +66,6 @@ class PinManager{
 
   // String getName() { return _name; };
 
-  protected:
-    int _pin;
-    bool _lock; //used to prevent "single" action on "long" press
-    bool _oldpinstatus;
-    bool _analog;
-    unsigned long _debounce;
-    uint32_t _activationTimer;
-    String _name;
+
 
 };
