@@ -16,7 +16,7 @@ class OutputPin : public Pin {
     String _name = "";
 
   public:
-    OutputPin(int pinnumber, bool isanalog, String name) {
+    OutputPin(int pinnumber, String name) {
       _pinnumber = pinnumber;
       _name = name;
       digitalWrite(_pinnumber, LOW);
@@ -68,7 +68,7 @@ class PinManager{
     bool _lock = false;
     bool _oldpinstatus = false;
     bool _analog = false;
-    unsigned long _debounce = 50;
+    unsigned long _debounce = millis();
     uint32_t _activationTimer = 0;
     String _name = "fake";
     Pin _outpin;
@@ -76,30 +76,38 @@ class PinManager{
   public:
   PinManager() {}
 
-  PinManager(int pin, bool isanalog, String name){
+  PinManager(int pin, bool isanalog, String name){ // in, no out
     _pin = pin;
     _analog = isanalog;
-    _debounce = millis();
     _name = name;
 
     pinMode(pin, INPUT);
   }
 
-  PinManager(int pin, bool isanalog, String name, int outpin) {
+  PinManager(int pin, bool isanalog, String name, int outpin) { // inout
     _pin = pin;
     _analog = isanalog;
-    _debounce = millis();
     _name = name;
-    _outpin = OutputPin(outpin, _analog, _name);
-
-    if (_pin == -1){
-      // this instance does not have a pin input
-      // such as a relay whose button is on another PLC
-      return;
-    }
+    _outpin = OutputPin(outpin, _name);
 
     pinMode(_pin, INPUT);
   }
+
+  PinManager(int pin, bool isanalog, String name, String remote, int remotepin) { // local in, remote out
+    _pin = pin;
+    _analog = isanalog;
+    _name = name;
+    _outpin = RemoteOutputPin(remote, remotepin);
+
+    pinMode(_pin, INPUT);
+  }
+
+  PinManager(String name, int outpin) { // out, no in
+    _name = name;
+    _outpin = OutputPin(outpin, name);
+    OutputPin(outpin, _name);
+  }
+
 
   void check() {
     if (_pin == -1) {
