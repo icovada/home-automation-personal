@@ -1,4 +1,5 @@
-#define MQTT_NAME "Controllino Quadro"
+#define MQTT_NAME "controllino_quadro"
+#define MQTT_HUMAN_NAME "Controllino Quadro"
 
 #include <Controllino.h>
 #include <SPI.h>

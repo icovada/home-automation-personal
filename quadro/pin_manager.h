@@ -1,6 +1,14 @@
 #ifndef PIN_MANAGER_H
 #define PIN_MANAGER_H
 
+#ifndef MQTT_NAME
+#define MQTT_NAME "controllino_quadro"
+#endif
+
+#ifndef MQTT_HUMAN_NAME
+#define MQTT_HUMAN_NAME "Controllino Quadro"
+#endif
+
 #include <Arduino.h>
 #include <ArduinoHA.h>
 
@@ -107,10 +115,10 @@ public:
     pinMode(inputPin, INPUT);
 
     // Pre-compute strings to ensure they persist
-    _shortId = _name + "_short";
-    _longId = _name + "_long";
-    _shortName = _name + " Short Press";
-    _longName = _name + " Long Press";
+    _shortId = String(MQTT_NAME) + "_" + _name + "_short";
+    _longId = String(MQTT_NAME) + "_" + _name + "_long";
+    _shortName = String(MQTT_HUMAN_NAME) + " " + _name + " Short Press";
+    _longName = String(MQTT_HUMAN_NAME) + " " + _name + " Long Press";
   }
 
   void initSensors() {
