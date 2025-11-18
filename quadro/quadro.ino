@@ -7,12 +7,14 @@
 #include <avr/wdt.h>
 #include <PubSubClient.h>
 #include <ArduinoHA.h> // https://github.com/dawidchyrzynski/arduino-home-assistant/
+#include <ArduinoHttpClient.h>
 
 #define DEBUG_MODE 1
 
 EthernetServer ethServer(80);
 EthernetClient ethMqttClient;
-EthernetClient httpClient;
+EthernetClient httpRestClient;
+EthernetClient httpEthernetClient;
 HADevice device("quadro", sizeof("quadro"));
 HAMqtt mqtt(ethMqttClient, device);
 String mqtt_server;
@@ -108,6 +110,7 @@ void setup() {
 
     // start the Ethernet connection and the server:
     Ethernet.begin(mac, ip, dns, gw, mask);
+    HttpClient http = HttpClient(httpEthernetClient, doc["remote"].as<String>(), 80);
   }
 
   rest.set_id("1");
@@ -130,8 +133,8 @@ void setup() {
 }
 
 void loop() {
-  httpClient = ethServer.available();
-  rest.handle(httpClient);
+  httpRestClient = ethServer.available();
+  rest.handle(httpRestClient);
 
   mqtt.loop();
 }
