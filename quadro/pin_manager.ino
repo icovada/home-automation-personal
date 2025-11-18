@@ -65,12 +65,6 @@ class RemoteOutputPin : public Pin{
 class PinManager{
   // Abstract Base Class for LocalPinManager and RemotePinManager
   public:
-    virtual void check() {}
-    virtual void _notifyChange(String event) {}
-};
-
-class LocalPinManager : public PinManager{
-  protected:
     int _pin = -1;
     bool _lock = false;
     bool _oldpinstatus = false;
@@ -81,88 +75,73 @@ class LocalPinManager : public PinManager{
     HABinarySensor long;
     String _name = "fake";
     Pin _outpin;
-
-  public:
-  LocalPinManager() {}
-
-  LocalPinManager(int pin, bool isanalog, String name){ // in, no out
-    _pin = pin;
-    _analog = isanalog;
-    _name = name;
-
-    pinMode(pin, INPUT);
-  }
-
-  LocalPinManager(int pin, bool isanalog, String name, int outpin) { // inout
-    _pin = pin;
-    _analog = isanalog;
-    _name = name;
-    _outpin = OutputPin(outpin, _name);
-
-    pinMode(_pin, INPUT);
-  }
-
-  
-  LocalPinManager(String name, int outpin) { // out, no in
-    _name = name;
-    _outpin = OutputPin(outpin, name);
-    OutputPin(outpin, _name);
-  }
-  
-  LocalPinManager(int pin, bool isanalog, String name, String remote, int remotepin) { // local in, remote out
-    _pin = pin;
-    _analog = isanalog;
-    _name = name;
-    _outpin = RemoteOutputPin(remote, remotepin);
-
-    pinMode(_pin, INPUT);
-  }
-
-
-  void check() override {
-    if (_pin == -1) {
-      // this instance does not have a pin input
-      // such as a relay whose button is on another PLC
-      return;
-    }
-    if (millis() > _debounce + 30){
-      bool pinStatus;
-      if (_analog) {
-        if (analogRead(_pin) < 10) {
-          pinStatus = 0;
-        } else if (analogRead(_pin) > 80) {
-          pinStatus = 1;
-        }
-      } else {
-        pinStatus = digitalRead(_pin);
+    
+    void check() {
+      if (_pin == -1) {
+        // this instance does not have a pin input
+        // such as a relay whose button is on another PLC
+        return;
       }
-
-      if (pinStatus && !_oldpinstatus) { // if pressed and was not pressed
-        _oldpinstatus = pinStatus;
-        _lock = true;
-        _activationTimer = millis();
-      } else if (((millis() - _activationTimer) > 400) && _lock) { // If still pressed after 400 ms
-        _lock = false;
-        Serial.println("Long press");
-        _notifyChange("long");
-      } else if (!pinStatus && _oldpinstatus) { // if Let go
-        if (_lock) {                            // if still in action
-          _oldpinstatus = pinStatus;
-          _lock = false;
-          Serial.println("Single press");
-          _notifyChange("single");
+      if (millis() > _debounce + 30){
+        bool pinStatus;
+        if (_analog) {
+          if (analogRead(_pin) < 10) {
+            pinStatus = 0;
+          } else if (analogRead(_pin) > 80) {
+            pinStatus = 1;
+          }
         } else {
-          _oldpinstatus = pinStatus;
-          _notifyChange("letgo");
+          pinStatus = digitalRead(_pin);
         }
+
+        if (pinStatus && !_oldpinstatus) { // if pressed and was not pressed
+          _oldpinstatus = pinStatus;
+          _lock = true;
+          _activationTimer = millis();
+        } else if (((millis() - _activationTimer) > 400) && _lock) { // If still pressed after 400 ms
+          _lock = false;
+          Serial.println("Long press");
+          _notifyChange("long");
+        } else if (!pinStatus && _oldpinstatus) { // if Let go
+          if (_lock) {                            // if still in action
+            _oldpinstatus = pinStatus;
+            _lock = false;
+            Serial.println("Single press");
+            _notifyChange("single");
+          } else {
+            _oldpinstatus = pinStatus;
+            _notifyChange("letgo");
+          }
+        }
+        _debounce = millis();
       }
-      _debounce = millis();
     }
-  }
 
-  void _notifyChange(String event) override{
-  }
+    void _notifyChange(String event){
+    }
+};
 
+class LocalPinManager : public PinManager{
+  public:
+    LocalPinManager() {}
 
+    LocalPinManager(String name, int outpin) 
+      : LocalPinManager(-1, false, name, outpin) {} // out, no in
 
+    LocalPinManager(int pin, bool isanalog, String name)
+      : LocalPinManager(pin, isanalog, name, -1) {}
+
+    LocalPinManager(int pin, bool isanalog, String name, int outpin) { // inout
+      _pin = pin;
+      _analog = isanalog;
+      _name = name;
+
+      if (outpin != -1){
+        _outpin = OutputPin(outpin, _name);
+      }
+
+      if (_pin != -1){
+        pinMode(_pin, INPUT);
+      }
+    }
 };
