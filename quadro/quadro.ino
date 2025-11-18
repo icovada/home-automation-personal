@@ -8,6 +8,7 @@
 #include <PubSubClient.h>
 #include <ArduinoHA.h> // https://github.com/dawidchyrzynski/arduino-home-assistant/
 #include <ArduinoHttpClient.h>
+#include "pin_manager.h"
 
 #define DEBUG_MODE 1
 
@@ -18,6 +19,11 @@ EthernetClient httpEthernetClient;
 HADevice device("quadro", sizeof("quadro"));
 HAMqtt mqtt(ethMqttClient, device);
 String mqtt_server;
+
+PinManager* manager;
+HABinarySensor shortsensor("short");
+HABinarySensor longsensor("long");
+
 
 aREST rest = aREST();
 
@@ -116,6 +122,11 @@ void setup() {
   rest.set_id("1");
   rest.set_name("quadro");
 
+  shortsensor.setName("Controllino Test Short");
+  longsensor.setName("Controllino Test Long");
+
+  manager = new PinManager(CONTROLLINO_A0, true, &shortsensor, &longsensor);
+
   // Register custom functions
   rest.function("reset", resetController);
   rest.function("replace_config", replaceConfig);
@@ -130,6 +141,7 @@ void setup() {
 
   Serial.println("End");
   lastReconnectAttempt = 0;
+
 }
 
 void loop() {
