@@ -90,6 +90,10 @@ public:
   HABinarySensor* sensorShort;
   HABinarySensor* sensorLong;
   String _name;
+  String _shortId;
+  String _longId;
+  String _shortName;
+  String _longName;
 
   PinManager()
     : sensorShort(nullptr), sensorLong(nullptr), _name("") {}  // Default constructor
@@ -101,17 +105,23 @@ public:
       sensorShort(nullptr),
       sensorLong(nullptr) {
     pinMode(inputPin, INPUT);
+
+    // Pre-compute strings to ensure they persist
+    _shortId = _name + "_short";
+    _longId = _name + "_long";
+    _shortName = _name + " Short Press";
+    _longName = _name + " Long Press";
   }
 
   void initSensors() {
-    if (_name != "" && sensorShort == nullptr && sensorLong == nullptr) {
-      String shortId = _name + "_short";
-      String longId = _name + "_long";
-      sensorShort = new HABinarySensor(shortId.c_str());
-      sensorLong = new HABinarySensor(longId.c_str());
-      sensorShort->setName((_name + " Short Press").c_str());
-      sensorLong->setName((_name + " Long Press").c_str());
-    }
+    sensorShort = new HABinarySensor(_shortId.c_str());
+    sensorLong = new HABinarySensor(_longId.c_str());
+    sensorShort->setName(_shortName.c_str());
+    sensorLong->setName(_longName.c_str());
+    Serial.print("Sensors initialized: ");
+    Serial.print(_shortId);
+    Serial.print(", ");
+    Serial.println(_longId);
   }
 
   ~PinManager() {
