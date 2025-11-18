@@ -63,6 +63,13 @@ class RemoteOutputPin : public Pin{
 };
 
 class PinManager{
+  // Abstract Base Class for LocalPinManager and RemotePinManager
+  public:
+    virtual void check() {}
+    virtual void _notifyChange(String event) {}
+};
+
+class LocalPinManager : public PinManager{
   protected:
     int _pin = -1;
     bool _lock = false;
@@ -70,13 +77,15 @@ class PinManager{
     bool _analog = false;
     unsigned long _debounce = millis();
     uint32_t _activationTimer = 0;
+    HABinarySensor short;
+    HABinarySensor long;
     String _name = "fake";
     Pin _outpin;
 
   public:
-  PinManager() {}
+  LocalPinManager() {}
 
-  PinManager(int pin, bool isanalog, String name){ // in, no out
+  LocalPinManager(int pin, bool isanalog, String name){ // in, no out
     _pin = pin;
     _analog = isanalog;
     _name = name;
@@ -84,7 +93,7 @@ class PinManager{
     pinMode(pin, INPUT);
   }
 
-  PinManager(int pin, bool isanalog, String name, int outpin) { // inout
+  LocalPinManager(int pin, bool isanalog, String name, int outpin) { // inout
     _pin = pin;
     _analog = isanalog;
     _name = name;
@@ -93,7 +102,14 @@ class PinManager{
     pinMode(_pin, INPUT);
   }
 
-  PinManager(int pin, bool isanalog, String name, String remote, int remotepin) { // local in, remote out
+  
+  LocalPinManager(String name, int outpin) { // out, no in
+    _name = name;
+    _outpin = OutputPin(outpin, name);
+    OutputPin(outpin, _name);
+  }
+  
+  LocalPinManager(int pin, bool isanalog, String name, String remote, int remotepin) { // local in, remote out
     _pin = pin;
     _analog = isanalog;
     _name = name;
@@ -102,14 +118,8 @@ class PinManager{
     pinMode(_pin, INPUT);
   }
 
-  PinManager(String name, int outpin) { // out, no in
-    _name = name;
-    _outpin = OutputPin(outpin, name);
-    OutputPin(outpin, _name);
-  }
 
-
-  void check() {
+  void check() override {
     if (_pin == -1) {
       // this instance does not have a pin input
       // such as a relay whose button is on another PLC
@@ -150,10 +160,8 @@ class PinManager{
     }
   }
 
-  void _notifyChange(String event) {
+  void _notifyChange(String event) override{
   }
-
-  // String getName() { return _name; };
 
 
 
