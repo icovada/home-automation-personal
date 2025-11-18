@@ -133,7 +133,7 @@ public:
           oldPinStatus = pinStatus;
           if (sensorLong) sensorLong->setState(false);
         }
-      } else if (!lock && sensorShort && sensorShort->getCurrentState()) {
+      } else if (!lock && sensorShort && sensorShort->getCurrentState() && (millis() - activationTimer > 400)) {
         sensorShort->setState(false);
       }
       debounce = millis();
