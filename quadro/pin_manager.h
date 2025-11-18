@@ -97,6 +97,8 @@ public:
   uint32_t activationTimer = 0;
   HABinarySensor* sensorShort;
   HABinarySensor* sensorLong;
+  Pin* pinShort;
+  Pin* pinLong;
   String _name;
   String _shortId;
   String _longId;
@@ -104,14 +106,19 @@ public:
   String _longName;
 
   PinManager()
-    : sensorShort(nullptr), sensorLong(nullptr), _name("") {}  // Default constructor
+    : sensorShort(nullptr), sensorLong(nullptr), pinShort(nullptr), pinLong(nullptr), _name("") {}  // Default constructor
 
   PinManager(int inPin, bool isAnalog, String name)
+    : PinManager(inPin, isAnalog, name, nullptr, nullptr) {}
+
+  PinManager(int inPin, bool isAnalog, String name, Pin* shortPin, Pin* longPin)
     : inputPin(inPin),
       analog(isAnalog),
       _name(name),
       sensorShort(nullptr),
-      sensorLong(nullptr) {
+      sensorLong(nullptr),
+      pinShort(shortPin),
+      pinLong(longPin) {
     pinMode(inputPin, INPUT);
 
     // Pre-compute strings to ensure they persist
@@ -120,6 +127,7 @@ public:
     _shortName = String(MQTT_HUMAN_NAME) + " " + _name + " Short Press";
     _longName = String(MQTT_HUMAN_NAME) + " " + _name + " Long Press";
   }
+
 
   void initSensors() {
     sensorShort = new HABinarySensor(_shortId.c_str());
