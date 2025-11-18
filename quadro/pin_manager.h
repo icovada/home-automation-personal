@@ -175,9 +175,6 @@ public:
       debounce = millis();
     }
   }
-
-  void _notifyChange(String event) {
-  }
 };
 
 #endif
