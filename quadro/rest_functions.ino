@@ -1,4 +1,4 @@
-#include <ArduinoJson.h> // https://arduinojson.org/
+#include <ArduinoJson.h>  // https://arduinojson.org/
 
 #ifndef DEBUG_MODE
 #define DEBUG_MODE 0
@@ -6,8 +6,8 @@
 
 int resetController(String command) {
   wdt_enable(WDTO_15MS);
-  while(1) {}
-  return 1; // Never reached
+  while (1) {}
+  return 1;  // Never reached
 }
 
 // Custom function to control digital pins with MQTT publishing
@@ -38,7 +38,7 @@ int setDigitalPin(String command) {
   String payload = String(value);
   mqtt.publish(topic.c_str(), payload.c_str());
 
-  return 1; // Success
+  return 1;  // Success
 }
 
 // Custom function to read digital pins with MQTT publishing
@@ -103,7 +103,7 @@ int setAnalogPin(String command) {
   Serial.print(" = ");
   Serial.println(payload);
 
-  return 1; // Success
+  return 1;  // Success
 }
 
 // Custom function to read analog pins with MQTT publishing
@@ -125,10 +125,10 @@ int getAnalogPin(String command) {
   return value;
 }
 
-int replaceConfig(String data){
+int replaceConfig(String data) {
   JsonDocument jsonConfig;
 
-  if (DEBUG_MODE){
+  if (DEBUG_MODE) {
     Serial.println("Parsing incoming JSON");
     Serial.println(data);
   }
@@ -138,14 +138,14 @@ int replaceConfig(String data){
   data.replace("%20", " ");
   data.replace("%22", "\"");
 
-  if (DEBUG_MODE){
+  if (DEBUG_MODE) {
     Serial.println("URL-decoded data:");
     Serial.println(data);
   }
 
   StaticJsonDocument<256> doc;
   DeserializationError error = deserializeJson(doc, data);
-  if (error){
+  if (error) {
     Serial.println("New config not valid");
     Serial.println(error.c_str());
     return 1;
