@@ -6,8 +6,7 @@
 
 // External references to variables defined in quadro.ino
 extern HAMqtt mqtt;
-
-String baseTopic = "pippo/";
+extern String baseTopic;
 
 class Pin {
   // Abstract Base Class for OutputPin and RemoteOutputPin
@@ -90,19 +89,42 @@ public:
   uint32_t activationTimer = 0;
   HABinarySensor* sensorShort;
   HABinarySensor* sensorLong;
+  String _name;
 
-  PinManager() : sensorShort(nullptr), sensorLong(nullptr) {}  // Default constructor
+  PinManager()
+    : sensorShort(nullptr), sensorLong(nullptr), _name("") {}  // Default constructor
 
-  PinManager(int inPin, bool isAnalog, HABinarySensor* inSensorShort, HABinarySensor* inSensorLong) {  // inout
-    inputPin = inPin;
-    analog = isAnalog;
-    sensorShort = inSensorShort;
-    sensorLong = inSensorLong;
-
+  PinManager(int inPin, bool isAnalog, String name)
+    : inputPin(inPin),
+      analog(isAnalog),
+      _name(name),
+      sensorShort(nullptr),
+      sensorLong(nullptr) {
     pinMode(inputPin, INPUT);
   }
 
+  void initSensors() {
+    if (_name != "" && sensorShort == nullptr && sensorLong == nullptr) {
+      String shortId = _name + "_short";
+      String longId = _name + "_long";
+      sensorShort = new HABinarySensor(shortId.c_str());
+      sensorLong = new HABinarySensor(longId.c_str());
+      sensorShort->setName((_name + " Short Press").c_str());
+      sensorLong->setName((_name + " Long Press").c_str());
+    }
+  }
+
+  ~PinManager() {
+    if (sensorShort != nullptr) delete sensorShort;
+    if (sensorLong != nullptr) delete sensorLong;
+  }
+
   void check() {
+    // Skip if not initialized
+    if (inputPin == -1 || sensorShort == nullptr || sensorLong == nullptr) {
+      return;
+    }
+
     if (millis() > debounce + 30) {
       bool pinStatus;
       if (analog) {

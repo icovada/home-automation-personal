@@ -1,12 +1,14 @@
+#define MQTT_NAME "Controllino Quadro"
+
 #include <Controllino.h>
 #include <SPI.h>
 #include <Ethernet.h>
 #include <aREST.h>
 #include <EEPROM.h>
-#include <ArduinoJson.h> // https://arduinojson.org/
+#include <ArduinoJson.h>  // https://arduinojson.org/
 #include <avr/wdt.h>
 #include <PubSubClient.h>
-#include <ArduinoHA.h> // https://github.com/dawidchyrzynski/arduino-home-assistant/
+#include <ArduinoHA.h>  // https://github.com/dawidchyrzynski/arduino-home-assistant/
 #include <ArduinoHttpClient.h>
 #include "pin_manager.h"
 #include "rest_functions.h"
@@ -20,13 +22,9 @@ EthernetClient httpEthernetClient;
 HADevice device("quadro", sizeof("quadro"));
 HAMqtt mqtt(ethMqttClient, device);
 String mqtt_server;
+String baseTopic = "pippo/";
 
-PinManager manager[2];
-HABinarySensor shortsensor("short");
-HABinarySensor longsensor("long");
-HABinarySensor shortsensor2("short2");
-HABinarySensor longsensor2("long2");
-
+PinManager manager[2];  // Will be initialized in setup() after MQTT
 aREST rest = aREST();
 
 String jsonConfig = "{\"net\":{\"ip\":[192,168,1,6],\"mask\":[255,255,255,0],\"gw\":[192,168,1,1],\"dns\":[192,168,1,1],\"mac\":\"001020304050\"},\"mqtt\":\"mqtt.in.tabbo.it\"}";
@@ -34,8 +32,8 @@ long lastReconnectAttempt = 0;
 
 void saveJsonToEEPROM(char* json, int startAddr = 0) {
   int len = strlen(json);
-  EEPROM.write(startAddr, len); // Store length first
-  
+  EEPROM.write(startAddr, len);  // Store length first
+
   for (int i = 0; i < len; i++) {
     EEPROM.write(startAddr + 1 + i, json[i]);
   }
@@ -43,19 +41,25 @@ void saveJsonToEEPROM(char* json, int startAddr = 0) {
 
 String readJsonFromEEPROM(int startAddr = 0) {
   int len = EEPROM.read(startAddr);
-  char json[len + 1];
-  
-  for (int i = 0; i < len; i++) {
-    json[i] = EEPROM.read(startAddr + 1 + i);
+
+  // Limit max length to prevent stack overflow
+  if (len > 250 || len == 0) {
+    return "";
   }
-  json[len] = '\0';
-  
-  return String(json);
+
+  String result = "";
+  result.reserve(len + 1);
+
+  for (int i = 0; i < len; i++) {
+    result += (char)EEPROM.read(startAddr + 1 + i);
+  }
+
+  return result;
 }
 
 void parseMacAddress(const char* macStr, byte* macArray) {
   for (int i = 0; i < 6; i++) {
-    char hex[3] = {macStr[i*2], macStr[i*2 + 1], '\0'};
+    char hex[3] = { macStr[i * 2], macStr[i * 2 + 1], '\0' };
     macArray[i] = (byte)strtol(hex, NULL, 16);
   }
 }
@@ -65,8 +69,7 @@ IPAddress parseIPAddress(JsonArrayConst address) {
     address[0].as<int>(),
     address[1].as<int>(),
     address[2].as<int>(),
-    address[3].as<int>()
-  );
+    address[3].as<int>());
 }
 
 void onMqttMessage(char* topic, byte* payload, unsigned int length) {
@@ -85,8 +88,9 @@ void onMqttMessage(char* topic, byte* payload, unsigned int length) {
 }
 
 void setup() {
+  wdt_disable();  // Disable watchdog timer immediately
 
-  Serial.begin(9600);  
+  Serial.begin(9600);
   Serial.println("Start");
 
   // Serial.println("Writing JSON to EEPROM");
@@ -102,7 +106,7 @@ void setup() {
   // Parse and use the JSON
   StaticJsonDocument<256> doc;
   DeserializationError error = deserializeJson(doc, readJson);
-  
+
   if (error) {
     Serial.print("JSON parsing failed, getting address from DHCP, MAC: AE:AD:BE:EF:FE:FF");
     Serial.println(error.c_str());
@@ -124,14 +128,6 @@ void setup() {
   rest.set_id("1");
   rest.set_name("quadro");
 
-  shortsensor.setName("Controllino Test Short");
-  longsensor.setName("Controllino Test Long");
-  shortsensor2.setName("Controllino Test Short2");
-  longsensor2.setName("Controllino Test Long2");
-
-  manager[0] = PinManager(CONTROLLINO_A0, true, &shortsensor, &longsensor);
-  manager[1] = PinManager(CONTROLLINO_A1, true, &shortsensor2, &longsensor2);
-
   // Register custom functions
   rest.function("reset", resetController);
   rest.function("replace_config", replaceConfig);
@@ -141,12 +137,19 @@ void setup() {
   rest.function("get_analog", getAnalogPin);
   ethServer.begin();
 
+  // Initialize PinManagers before MQTT
+  manager[0] = PinManager(CONTROLLINO_A0, true, "Test1");
+  manager[1] = PinManager(CONTROLLINO_A1, true, "Test2");
+
+  // Initialize sensors (must be before mqtt.begin())
+  manager[0].initSensors();
+  manager[1].initSensors();
+
   mqtt.onMessage(onMqttMessage);
   mqtt.begin(doc["mqtt"].as<const char*>());
 
   Serial.println("End");
   lastReconnectAttempt = 0;
-
 }
 
 void loop() {
@@ -155,7 +158,7 @@ void loop() {
 
   mqtt.loop();
 
-  for (int i=0;i<2;i++){
+  for (int i = 0; i < 2; i++) {
     manager[i].check();
   }
 }
