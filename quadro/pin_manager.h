@@ -118,10 +118,6 @@ public:
     sensorLong = new HABinarySensor(_longId.c_str());
     sensorShort->setName(_shortName.c_str());
     sensorLong->setName(_longName.c_str());
-    Serial.print("Sensors initialized: ");
-    Serial.print(_shortId);
-    Serial.print(", ");
-    Serial.println(_longId);
   }
 
   ~PinManager() {
