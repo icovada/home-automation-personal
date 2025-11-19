@@ -1,0 +1,30 @@
+{
+    "configurations": [
+        {
+            "name": "Mac",
+            "includePath": [
+                "${workspaceFolder}/**",
+                "/Users/federico/Library/Arduino15/packages/arduino/hardware/avr/*/cores/arduino",
+                "/Users/federico/Library/Arduino15/packages/arduino/hardware/avr/*/variants/*",
+                "/Users/federico/Library/Arduino15/packages/arduino/hardware/avr/*/libraries/**",
+                "/Users/federico/Library/Arduino15/packages/arduino/tools/**",
+                "/Users/federico/Library/Arduino15/packages/CONTROLLINO_Boards/**",
+                "/Users/federico/Library/Arduino15/packages/industruino/**",
+                "/Users/federico/Library/Arduino15/libraries/**",
+                "/Users/federico/Documents/Arduino/libraries/**"
+            ],
+            "defines": [
+                "ARDUINO=10819",
+                "ARDUINO_AVR_UNO",
+                "ARDUINO_ARCH_AVR",
+                "__AVR__",
+                "__AVR_ATmega328P__"
+            ],
+            "compilerPath": "/usr/bin/clang",
+            "cStandard": "c17",
+            "cppStandard": "c++14",
+            "intelliSenseMode": "macos-clang-arm64"
+        }
+    ],
+    "version": 4
+}
