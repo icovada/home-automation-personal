@@ -28,8 +28,6 @@ String baseTopic = "pippo/";
 PinManager *manager[2]; // Will be initialized in setup() after MQTT
 aREST rest = aREST();
 
-String jsonConfig = "{\"net\":{\"ip\":[192,168,1,6],\"mask\":[255,255,255,0],\"gw\":[192,168,1,1],\"dns\":[192,168,1,1],\"mac\":\"001020304050\"},\"mqtt\":\"mqtt.in.tabbo.it\"}";
-
 void saveJsonToEEPROM(char *json, int startAddr = 0)
 {
   int len = strlen(json);
@@ -104,9 +102,6 @@ void setup()
 
   Serial.begin(9600);
   Serial.println("Start");
-
-  // Serial.println("Writing JSON to EEPROM");
-  //  saveJsonToEEPROM(jsonConfig);
 
   String config = readJsonFromEEPROM();
   JsonDocument jsonConfig;
