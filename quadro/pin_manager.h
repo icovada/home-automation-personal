@@ -14,7 +14,6 @@
 
 // External references to variables defined in quadro.ino
 extern HAMqtt mqtt;
-extern String baseTopic;
 
 class Pin
 {
@@ -106,30 +105,69 @@ public:
 
 class RemoteOutputPin : public Pin
 {
-protected:
-  String _remote_host = "";
-  int _pinnumber = -1;
-
 public:
-  RemoteOutputPin(String remote_host, int pinnumber)
+  String remoteHost;
+  int remotePort = 80;
+  int pinnumber = -1;
+
+  RemoteOutputPin(String host, int port, int pinnumber)
+      : remoteHost(host),
+        remotePort(port),
+        pinnumber(pinnumber) {}
+
+  void on() override
   {
-    _remote_host = remote_host;
-    _pinnumber = pinnumber;
+    toggle();
   }
+  void off() override
+  {
+    toggle();
+  }
+  void toggle() override
+  {
+    Serial.println("Remote pin toggle");
 
-  void on() override {}     // TODO
-  void off() override {}    // TODO
-  void toggle() override {} // TODO
-};
+    // Create a fresh EthernetClient for this request
+    EthernetClient ethClient;
+    HttpClient client(ethClient, remoteHost, remotePort);
+    client.setTimeout(1000); // 1 second timeout
+    client.setHttpResponseTimeout(1000);
 
-class FakeOutputPin : public Pin
-{
-public:
-  FakeOutputPin() {}
+    // Construct the full path
+    String path = "/led?params=" + String(pinnumber) + ",2";
+    Serial.print("Requesting: http://");
+    Serial.print(remoteHost);
+    Serial.print(":");
+    Serial.print(remotePort);
+    Serial.println(path);
 
-  void on() override {}
-  void off() override {}
-  void toggle() override {}
+    int err = client.get(path);
+
+    if (err == 0)
+    {
+      Serial.println("Request sent successfully, waiting for response...");
+
+      // read the status code and body of the response
+      int statusCode = client.responseStatusCode();
+      String response = client.responseBody();
+
+      Serial.print("Status code: ");
+      Serial.println(statusCode);
+      Serial.print("Response: ");
+      Serial.println(response);
+
+      // Stop the client to free resources
+      client.stop();
+    }
+    else
+    {
+      Serial.print("HTTP GET failed, error: ");
+      Serial.println(err);
+      Serial.print("Client connected: ");
+      Serial.println(client.connected());
+      client.stop();
+    }
+  }
 };
 
 class PinManager

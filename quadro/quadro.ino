@@ -19,11 +19,11 @@
 EthernetServer ethServer(80);
 EthernetClient ethMqttClient;
 EthernetClient httpRestClient;
-EthernetClient httpEthernetClient;
 HADevice device("quadro");
 HAMqtt mqtt(ethMqttClient, device);
 String mqtt_server;
 String baseTopic = "pippo/";
+String remoteHttpHost = "";
 
 PinManager *manager[2]; // Will be initialized in setup() after MQTT
 aREST rest = aREST();
@@ -99,7 +99,6 @@ void onMqttMessage(const char *topic, const uint8_t *payload, uint16_t length)
 void setup()
 {
   wdt_disable(); // Disable watchdog timer immediately
-
   Serial.begin(9600);
   Serial.println("Start");
 
@@ -132,7 +131,10 @@ void setup()
 
     // start the Ethernet connection and the server:
     Ethernet.begin(mac, ip, dns, gw, mask);
-    HttpClient http = HttpClient(httpEthernetClient, doc["remote"].as<String>(), 80);
+    remoteHttpHost = doc["remote"].as<String>();
+    Serial.println("Init remote http to " + remoteHttpHost);
+    Serial.print("Local IP: ");
+    Serial.println(Ethernet.localIP());
   }
 
   rest.set_id("1");
@@ -158,12 +160,11 @@ void setup()
 
   OutputPin *pin1 = new OutputPin(CONTROLLINO_D0, light);
   OutputPin *pin2 = new OutputPin(CONTROLLINO_D1, haswitch2);
-  OutputPin *pin3 = new OutputPin(CONTROLLINO_D2, haswitch);
-  OutputPin *pin4 = new OutputPin(CONTROLLINO_D3);
+  RemoteOutputPin *rpin = new RemoteOutputPin(remoteHttpHost, 80, 2);
 
   // Initialize PinManagers before MQTT
   manager[0] = new PinManager(CONTROLLINO_A0, true, "Test1", pin1, pin2);
-  manager[1] = new PinManager(CONTROLLINO_A1, true, "Test2", pin3, pin4);
+  manager[1] = new PinManager(CONTROLLINO_A1, true, "Test2", rpin);
 
   mqtt.onMessage(onMqttMessage);
   mqtt.begin(doc["mqtt"].as<const char *>());
