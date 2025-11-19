@@ -38,9 +38,12 @@ public:
 
   OutputPin(int pinnumber)
       : pinNumber(pinnumber),
-        haLight(nullptr)
-  {
+        haLight(nullptr) {}
 
+  OutputPin(int pinnumber, HALight *haLight)
+      : pinNumber(pinnumber),
+        haLight(haLight)
+  {
     digitalWrite(pinNumber, LOW);
     pinStatus = false;
   }

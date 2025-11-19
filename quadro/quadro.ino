@@ -153,7 +153,10 @@ void setup()
   rest.function("get_analog", getAnalogPin);
   ethServer.begin();
 
-  OutputPin *pin1 = new OutputPin(CONTROLLINO_D0);
+  HALight *light = new HALight("test1");
+  light->setName("Test 1");
+
+  OutputPin *pin1 = new OutputPin(CONTROLLINO_D0, light);
   OutputPin *pin2 = new OutputPin(CONTROLLINO_D1);
   OutputPin *pin3 = new OutputPin(CONTROLLINO_D2);
   OutputPin *pin4 = new OutputPin(CONTROLLINO_D3);
