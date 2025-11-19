@@ -129,9 +129,13 @@ public:
 
     // Create a fresh EthernetClient for this request
     EthernetClient ethClient;
-    HttpClient client(ethClient, remoteHost, remotePort);
-    client.setTimeout(1000); // 1 second timeout
-    client.setHttpResponseTimeout(1000);
+
+    // Ensure client is disconnected before attempting connection
+    if (ethClient.connected())
+    {
+      ethClient.stop();
+      delay(50);
+    }
 
     // Construct the full path
     String path = "/led?params=" + String(pinnumber) + ",2";
@@ -141,31 +145,38 @@ public:
     Serial.print(remotePort);
     Serial.println(path);
 
-    int err = client.get(path);
-
-    if (err == 0)
+    // Connect to the remote server with retry
+    int retries = 0;
+    while (retries < 3 && !ethClient.connect(remoteHost.c_str(), remotePort))
     {
-      Serial.println("Request sent successfully, waiting for response...");
+      Serial.print("Connection attempt ");
+      Serial.print(retries + 1);
+      Serial.println(" failed, retrying...");
+      ethClient.stop();
+      delay(50);
+      retries++;
+    }
 
-      // read the status code and body of the response
-      int statusCode = client.responseStatusCode();
-      String response = client.responseBody();
+    if (ethClient.connected())
+    {
+      Serial.println("Connected to server");
 
-      Serial.print("Status code: ");
-      Serial.println(statusCode);
-      Serial.print("Response: ");
-      Serial.println(response);
+      // Build complete request as single string to ensure it's sent in one packet
+      String request = "GET " + path + "\r\n";
 
-      // Stop the client to free resources
-      client.stop();
+      // Send the entire request at once
+      ethClient.print(request);
+      ethClient.flush(); // Ensure data is sent
+
+      // Give aREST time to parse the request before closing
+      // aREST needs the connection open briefly to detect request completion
+      Serial.println("Request sent");
+      ethClient.stop();
     }
     else
     {
-      Serial.print("HTTP GET failed, error: ");
-      Serial.println(err);
-      Serial.print("Client connected: ");
-      Serial.println(client.connected());
-      client.stop();
+      Serial.println("Connection failed after retries");
+      ethClient.stop();
     }
   }
 };
