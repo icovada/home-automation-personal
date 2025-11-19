@@ -153,12 +153,18 @@ void setup()
   rest.function("get_analog", getAnalogPin);
   ethServer.begin();
 
-  HALight *light = new HALight("test1");
-  light->setName("Test 1");
+  HALight *light = new HALight("testlight");
+  light->setName("Test Light");
+
+  HASwitch *haswitch = new HASwitch("switch1");
+  haswitch->setName("sw Test 1");
+
+  HASwitch *haswitch2 = new HASwitch("switch2");
+  haswitch2->setName("sw Test 2");
 
   OutputPin *pin1 = new OutputPin(CONTROLLINO_D0, light);
-  OutputPin *pin2 = new OutputPin(CONTROLLINO_D1);
-  OutputPin *pin3 = new OutputPin(CONTROLLINO_D2);
+  OutputPin *pin2 = new OutputPin(CONTROLLINO_D1, haswitch2);
+  OutputPin *pin3 = new OutputPin(CONTROLLINO_D2, haswitch);
   OutputPin *pin4 = new OutputPin(CONTROLLINO_D3);
 
   // Initialize PinManagers before MQTT

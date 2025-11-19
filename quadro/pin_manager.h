@@ -32,17 +32,30 @@ public:
   int pinNumber = -1;
   bool pinStatus = false;
   HALight *haLight;
+  HASwitch *haSwitch;
 
   OutputPin()
-      : haLight(nullptr) {}
+      : haLight(nullptr),
+        haSwitch(nullptr) {}
 
   OutputPin(int pinnumber)
       : pinNumber(pinnumber),
-        haLight(nullptr) {}
+        haLight(nullptr),
+        haSwitch(nullptr) {}
 
   OutputPin(int pinnumber, HALight *haLight)
       : pinNumber(pinnumber),
-        haLight(haLight)
+        haLight(haLight),
+        haSwitch(nullptr)
+  {
+    digitalWrite(pinNumber, LOW);
+    pinStatus = false;
+  }
+
+  OutputPin(int pinnumber, HASwitch *haSwitch)
+      : pinNumber(pinnumber),
+        haLight(nullptr),
+        haSwitch(haSwitch)
   {
     digitalWrite(pinNumber, LOW);
     pinStatus = false;
@@ -51,7 +64,13 @@ public:
   void on() override
   {
     if (haLight)
+    {
       haLight->setState(true);
+    }
+    if (haSwitch)
+    {
+      haSwitch->setState(true);
+    }
     digitalWrite(pinNumber, HIGH);
     pinStatus = true;
   }
@@ -59,7 +78,13 @@ public:
   void off() override
   {
     if (haLight)
+    {
       haLight->setState(false);
+    }
+    if (haSwitch)
+    {
+      haSwitch->setState(false);
+    }
     digitalWrite(pinNumber, LOW);
     pinStatus = false;
   }
