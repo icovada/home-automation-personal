@@ -29,7 +29,6 @@ PinManager *manager[2]; // Will be initialized in setup() after MQTT
 aREST rest = aREST();
 
 String jsonConfig = "{\"net\":{\"ip\":[192,168,1,6],\"mask\":[255,255,255,0],\"gw\":[192,168,1,1],\"dns\":[192,168,1,1],\"mac\":\"001020304050\"},\"mqtt\":\"mqtt.in.tabbo.it\"}";
-long lastReconnectAttempt = 0;
 
 void saveJsonToEEPROM(char *json, int startAddr = 0)
 {
@@ -175,7 +174,6 @@ void setup()
   mqtt.begin(doc["mqtt"].as<const char *>());
 
   Serial.println("End");
-  lastReconnectAttempt = 0;
 }
 
 void loop()
