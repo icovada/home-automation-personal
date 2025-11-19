@@ -58,16 +58,21 @@ public:
     init();
   }
 
-  void init() {
+  void init()
+  {
     pinMode(pinNumber, OUTPUT);
     digitalWrite(pinNumber, 0);
     pinStatus = false;
   }
 
-  void onStateCommand(bool state, HALight* sender){
-    if (state){
+  void onStateCommand(bool state, HALight *sender)
+  {
+    if (state)
+    {
       on();
-    } else {
+    }
+    else
+    {
       off();
     }
   }

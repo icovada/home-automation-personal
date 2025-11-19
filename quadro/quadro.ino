@@ -155,11 +155,10 @@ void setup()
   HASwitch *haswitch = new HASwitch("switch1");
   haswitch->setName("sw Test 1");
 
-  static Pin* pins[] = {
-    new OutputPin(CONTROLLINO_D0, light),
-    new OutputPin(CONTROLLINO_D1, haswitch),
-    new RemoteOutputPin(remoteHttpHost, 80, 2)
-  };
+  static Pin *pins[] = {
+      new OutputPin(CONTROLLINO_D0, light),
+      new OutputPin(CONTROLLINO_D1, haswitch),
+      new RemoteOutputPin(remoteHttpHost, 80, 2)};
 
   // Initialize PinManagers before MQTT
   manager[0] = new PinManager(CONTROLLINO_A0, true, "Test1", pins[0], pins[1]);
