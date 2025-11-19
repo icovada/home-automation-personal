@@ -155,16 +155,15 @@ void setup()
   HASwitch *haswitch = new HASwitch("switch1");
   haswitch->setName("sw Test 1");
 
-  HASwitch *haswitch2 = new HASwitch("switch2");
-  haswitch2->setName("sw Test 2");
-
-  OutputPin *pin1 = new OutputPin(CONTROLLINO_D0, light);
-  OutputPin *pin2 = new OutputPin(CONTROLLINO_D1, haswitch2);
-  RemoteOutputPin *rpin = new RemoteOutputPin(remoteHttpHost, 80, 2);
+  static Pin* pins[] = {
+    new OutputPin(CONTROLLINO_D0, light),
+    new OutputPin(CONTROLLINO_D1, haswitch),
+    new RemoteOutputPin(remoteHttpHost, 80, 2)
+  };
 
   // Initialize PinManagers before MQTT
-  manager[0] = new PinManager(CONTROLLINO_A0, true, "Test1", pin1, pin2);
-  manager[1] = new PinManager(CONTROLLINO_A1, true, "Test2", rpin);
+  manager[0] = new PinManager(CONTROLLINO_A0, true, "Test1", pins[0], pins[1]);
+  manager[1] = new PinManager(CONTROLLINO_A1, true, "Test2", pins[2]);
 
   mqtt.onMessage(onMqttMessage);
   mqtt.begin(doc["mqtt"].as<const char *>());

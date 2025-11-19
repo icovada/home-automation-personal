@@ -47,8 +47,7 @@ public:
         haLight(haLight),
         haSwitch(nullptr)
   {
-    digitalWrite(pinNumber, LOW);
-    pinStatus = false;
+    init();
   }
 
   OutputPin(int pinnumber, HASwitch *haSwitch)
@@ -56,8 +55,21 @@ public:
         haLight(nullptr),
         haSwitch(haSwitch)
   {
-    digitalWrite(pinNumber, LOW);
+    init();
+  }
+
+  void init() {
+    pinMode(pinNumber, OUTPUT);
+    digitalWrite(pinNumber, 0);
     pinStatus = false;
+  }
+
+  void onStateCommand(bool state, HALight* sender){
+    if (state){
+      on();
+    } else {
+      off();
+    }
   }
 
   void on() override
@@ -139,19 +151,11 @@ public:
 
     // Construct the full path
     String path = "/led?params=" + String(pinnumber) + ",2";
-    Serial.print("Requesting: http://");
-    Serial.print(remoteHost);
-    Serial.print(":");
-    Serial.print(remotePort);
-    Serial.println(path);
 
     // Connect to the remote server with retry
     int retries = 0;
     while (retries < 3 && !ethClient.connect(remoteHost.c_str(), remotePort))
     {
-      Serial.print("Connection attempt ");
-      Serial.print(retries + 1);
-      Serial.println(" failed, retrying...");
       ethClient.stop();
       delay(50);
       retries++;
@@ -159,23 +163,16 @@ public:
 
     if (ethClient.connected())
     {
-      Serial.println("Connected to server");
-
       // Build complete request as single string to ensure it's sent in one packet
       String request = "GET " + path + "\r\n";
 
       // Send the entire request at once
       ethClient.print(request);
       ethClient.flush(); // Ensure data is sent
-
-      // Give aREST time to parse the request before closing
-      // aREST needs the connection open briefly to detect request completion
-      Serial.println("Request sent");
       ethClient.stop();
     }
     else
     {
-      Serial.println("Connection failed after retries");
       ethClient.stop();
     }
   }
