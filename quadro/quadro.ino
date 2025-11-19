@@ -6,10 +6,10 @@
 #include <Ethernet.h>
 #include <aREST.h>
 #include <EEPROM.h>
-#include <ArduinoJson.h>  // https://arduinojson.org/
+#include <ArduinoJson.h> // https://arduinojson.org/
 #include <avr/wdt.h>
 #include <PubSubClient.h>
-#include <ArduinoHA.h>  // https://github.com/dawidchyrzynski/arduino-home-assistant/
+#include <ArduinoHA.h> // https://github.com/dawidchyrzynski/arduino-home-assistant/
 #include <ArduinoHttpClient.h>
 #include "pin_manager.h"
 #include "rest_functions.h"
@@ -25,71 +25,83 @@ HAMqtt mqtt(ethMqttClient, device);
 String mqtt_server;
 String baseTopic = "pippo/";
 
-PinManager manager[2];  // Will be initialized in setup() after MQTT
+PinManager *manager[2]; // Will be initialized in setup() after MQTT
 aREST rest = aREST();
 
 String jsonConfig = "{\"net\":{\"ip\":[192,168,1,6],\"mask\":[255,255,255,0],\"gw\":[192,168,1,1],\"dns\":[192,168,1,1],\"mac\":\"001020304050\"},\"mqtt\":\"mqtt.in.tabbo.it\"}";
 long lastReconnectAttempt = 0;
 
-void saveJsonToEEPROM(char* json, int startAddr = 0) {
+void saveJsonToEEPROM(char *json, int startAddr = 0)
+{
   int len = strlen(json);
-  EEPROM.write(startAddr, len);  // Store length first
+  EEPROM.write(startAddr, len); // Store length first
 
-  for (int i = 0; i < len; i++) {
+  for (int i = 0; i < len; i++)
+  {
     EEPROM.write(startAddr + 1 + i, json[i]);
   }
 }
 
-String readJsonFromEEPROM(int startAddr = 0) {
+String readJsonFromEEPROM(int startAddr = 0)
+{
   int len = EEPROM.read(startAddr);
 
   // Limit max length to prevent stack overflow
-  if (len > 250 || len == 0) {
+  if (len > 250 || len == 0)
+  {
     return "";
   }
 
   String result = "";
   result.reserve(len + 1);
 
-  for (int i = 0; i < len; i++) {
+  for (int i = 0; i < len; i++)
+  {
     result += (char)EEPROM.read(startAddr + 1 + i);
   }
 
   return result;
 }
 
-void parseMacAddress(const char* macStr, byte* macArray) {
-  for (int i = 0; i < 6; i++) {
-    char hex[3] = { macStr[i * 2], macStr[i * 2 + 1], '\0' };
+void parseMacAddress(const char *macStr, byte *macArray)
+{
+  for (int i = 0; i < 6; i++)
+  {
+    char hex[3] = {macStr[i * 2], macStr[i * 2 + 1], '\0'};
     macArray[i] = (byte)strtol(hex, NULL, 16);
   }
 }
 
-IPAddress parseIPAddress(JsonArrayConst address) {
+IPAddress parseIPAddress(JsonArrayConst address)
+{
   return IPAddress(
-    address[0].as<int>(),
-    address[1].as<int>(),
-    address[2].as<int>(),
-    address[3].as<int>());
+      address[0].as<int>(),
+      address[1].as<int>(),
+      address[2].as<int>(),
+      address[3].as<int>());
 }
 
-void onMqttMessage(char* topic, byte* payload, unsigned int length) {
+void onMqttMessage(char *topic, byte *payload, unsigned int length)
+{
   // This callback is called when message from MQTT broker is received.
   // Please note that you should always verify if the message's topic is the one you expect.
   // For example: if (memcmp(topic, "myCustomTopic") == 0) { ... }
-  if (DEBUG_MODE) {
+  if (DEBUG_MODE)
+  {
     Serial.print("Message arrived [");
     Serial.print(topic);
     Serial.print("] ");
-    for (unsigned int i = 0; i < length; i++) {
+    for (unsigned int i = 0; i < length; i++)
+    {
       Serial.print((char)payload[i]);
     }
     Serial.println();
   }
 }
 
-void setup() {
-  wdt_disable();  // Disable watchdog timer immediately
+void setup()
+{
+  wdt_disable(); // Disable watchdog timer immediately
 
   Serial.begin(9600);
   Serial.println("Start");
@@ -108,12 +120,15 @@ void setup() {
   StaticJsonDocument<256> doc;
   DeserializationError error = deserializeJson(doc, readJson);
 
-  if (error) {
+  if (error)
+  {
     Serial.print("JSON parsing failed, getting address from DHCP, MAC: AE:AD:BE:EF:FE:FF");
     Serial.println(error.c_str());
-    byte mac[] = { 0xAE, 0xAD, 0xBE, 0xEF, 0xFE, 0xFF };
+    byte mac[] = {0xAE, 0xAD, 0xBE, 0xEF, 0xFE, 0xFF};
     Ethernet.begin(mac);
-  } else {
+  }
+  else
+  {
     byte mac[6];
     parseMacAddress(doc["net"]["mac"], mac);
     IPAddress ip = parseIPAddress(doc["net"]["ip"]);
@@ -138,28 +153,31 @@ void setup() {
   rest.function("get_analog", getAnalogPin);
   ethServer.begin();
 
-  // Initialize PinManagers before MQTT
-  manager[0] = PinManager(CONTROLLINO_A0, true, "Test1");
-  manager[1] = PinManager(CONTROLLINO_A1, true, "Test2");
+  OutputPin *pin1 = new OutputPin(CONTROLLINO_D0);
+  OutputPin *pin2 = new OutputPin(CONTROLLINO_D1);
+  OutputPin *pin3 = new OutputPin(CONTROLLINO_D2);
+  OutputPin *pin4 = new OutputPin(CONTROLLINO_D3);
 
-  // Initialize sensors (must be before mqtt.begin())
-  manager[0].initSensors();
-  manager[1].initSensors();
+  // Initialize PinManagers before MQTT
+  manager[0] = new PinManager(CONTROLLINO_A0, true, "Test1", pin1, pin2);
+  manager[1] = new PinManager(CONTROLLINO_A1, true, "Test2", pin3, pin4);
 
   mqtt.onMessage(onMqttMessage);
-  mqtt.begin(doc["mqtt"].as<const char*>());
+  mqtt.begin(doc["mqtt"].as<const char *>());
 
   Serial.println("End");
   lastReconnectAttempt = 0;
 }
 
-void loop() {
+void loop()
+{
   httpRestClient = ethServer.available();
   rest.handle(httpRestClient);
 
   mqtt.loop();
 
-  for (int i = 0; i < 2; i++) {
-    manager[i].check();
+  for (int i = 0; i < 2; i++)
+  {
+    manager[i]->check();
   }
 }
