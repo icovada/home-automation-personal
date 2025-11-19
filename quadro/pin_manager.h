@@ -27,6 +27,38 @@ public:
 
 class OutputPin : public Pin
 {
+private:
+  // Static map to associate HALight pointers with OutputPin instances
+  static OutputPin *instances[3]; // Adjust size as needed
+  static int instanceCount;
+
+  static void registerInstance(HALight *light, OutputPin *pin)
+  {
+    // Simple linear storage - could use a map in C++11
+    for (int i = 0; i < instanceCount; i++)
+    {
+      if (instances[i] == pin)
+        return; // Already registered
+    }
+    if (instanceCount < 16)
+    {
+      instances[instanceCount++] = pin;
+    }
+  }
+
+  static OutputPin *findInstance(HALight *light)
+  {
+    // Find the instance that owns this HALight
+    for (int i = 0; i < instanceCount; i++)
+    {
+      if (instances[i]->haLight == light)
+      {
+        return instances[i];
+      }
+    }
+    return nullptr;
+  }
+
 public:
   int pinNumber = -1;
   bool pinStatus = false;
@@ -47,6 +79,8 @@ public:
         haLight(haLight),
         haSwitch(nullptr)
   {
+    registerInstance(haLight, this);
+    haLight->onStateCommand(staticOnStateCommand);
     init();
   }
 
@@ -63,6 +97,16 @@ public:
     pinMode(pinNumber, OUTPUT);
     digitalWrite(pinNumber, 0);
     pinStatus = false;
+  }
+
+  // Static callback that retrieves the instance and calls the member function
+  static void staticOnStateCommand(bool state, HALight *sender)
+  {
+    OutputPin *instance = findInstance(sender);
+    if (instance)
+    {
+      instance->onStateCommand(state, sender);
+    }
   }
 
   void onStateCommand(bool state, HALight *sender)

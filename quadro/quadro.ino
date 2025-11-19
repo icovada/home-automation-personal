@@ -28,6 +28,14 @@ String remoteHttpHost = "";
 PinManager *manager[2]; // Will be initialized in setup() after MQTT
 aREST rest = aREST();
 
+// Global pin registry for callbacks
+static Pin *pins[3];
+static int pinCount = 0;
+
+// Initialize static members of OutputPin
+OutputPin *OutputPin::instances[3] = {nullptr};
+int OutputPin::instanceCount = 0;
+
 void saveJsonToEEPROM(char *json, int startAddr = 0)
 {
   int len = strlen(json);
@@ -155,10 +163,10 @@ void setup()
   HASwitch *haswitch = new HASwitch("switch1");
   haswitch->setName("sw Test 1");
 
-  static Pin *pins[] = {
-      new OutputPin(CONTROLLINO_D0, light),
-      new OutputPin(CONTROLLINO_D1, haswitch),
-      new RemoteOutputPin(remoteHttpHost, 80, 2)};
+  pins[0] = new OutputPin(CONTROLLINO_D0, light);
+  pins[1] = new OutputPin(CONTROLLINO_D1, haswitch);
+  pins[2] = new RemoteOutputPin(remoteHttpHost, 80, 2);
+  pinCount = 3;
 
   // Initialize PinManagers before MQTT
   manager[0] = new PinManager(CONTROLLINO_A0, true, "Test1", pins[0], pins[1]);
