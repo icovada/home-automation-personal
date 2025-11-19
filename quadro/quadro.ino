@@ -20,7 +20,7 @@ EthernetServer ethServer(80);
 EthernetClient ethMqttClient;
 EthernetClient httpRestClient;
 EthernetClient httpEthernetClient;
-HADevice device("quadro", sizeof("quadro"));
+HADevice device("quadro");
 HAMqtt mqtt(ethMqttClient, device);
 String mqtt_server;
 String baseTopic = "pippo/";
@@ -81,7 +81,7 @@ IPAddress parseIPAddress(JsonArrayConst address)
       address[3].as<int>());
 }
 
-void onMqttMessage(char *topic, byte *payload, unsigned int length)
+void onMqttMessage(const char *topic, const uint8_t *payload, uint16_t length)
 {
   // This callback is called when message from MQTT broker is received.
   // Please note that you should always verify if the message's topic is the one you expect.
