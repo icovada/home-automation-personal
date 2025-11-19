@@ -32,7 +32,7 @@ private:
   static OutputPin *instances[3]; // Adjust size as needed
   static int instanceCount;
 
-  static void registerInstance(HALight *light, OutputPin *pin)
+  static void registerInstanceLight(HALight *light, OutputPin *pin)
   {
     // Simple linear storage - could use a map in C++11
     for (int i = 0; i < instanceCount; i++)
@@ -46,12 +46,40 @@ private:
     }
   }
 
-  static OutputPin *findInstance(HALight *light)
+  static void registerInstanceSwitch(HASwitch *haSwitch, OutputPin *pin)
+  {
+    // Simple linear storage - could use a map in C++11
+    for (int i = 0; i < instanceCount; i++)
+    {
+      if (instances[i] == pin)
+        return; // Already registered
+    }
+    if (instanceCount < 16)
+    {
+      instances[instanceCount++] = pin;
+    }
+  }
+
+  static OutputPin *findInstanceLight(HALight *light)
   {
     // Find the instance that owns this HALight
     for (int i = 0; i < instanceCount; i++)
     {
       if (instances[i]->haLight == light)
+      {
+        return instances[i];
+      }
+    }
+    return nullptr;
+  }
+
+
+  static OutputPin *findInstanceSwitch(HASwitch *haSwitch)
+  {
+    // Find the instance that owns this HASwitch
+    for (int i = 0; i < instanceCount; i++)
+    {
+      if (instances[i]->haSwitch == haSwitch)
       {
         return instances[i];
       }
@@ -79,7 +107,7 @@ public:
         haLight(haLight),
         haSwitch(nullptr)
   {
-    registerInstance(haLight, this);
+    registerInstanceLight(haLight, this);
     haLight->onStateCommand(staticOnStateCommand);
     init();
   }
@@ -89,6 +117,8 @@ public:
         haLight(nullptr),
         haSwitch(haSwitch)
   {
+    registerInstanceSwitch(haSwitch, this);
+    haSwitch->onCommand(staticOnStateCommandSwitch);
     init();
   }
 
@@ -102,14 +132,47 @@ public:
   // Static callback that retrieves the instance and calls the member function
   static void staticOnStateCommand(bool state, HALight *sender)
   {
-    OutputPin *instance = findInstance(sender);
+    OutputPin *instance = findInstanceLight(sender);
     if (instance)
     {
-      instance->onStateCommand(state, sender);
+      instance->onStateCommandLight(state, sender);
     }
   }
 
-  void onStateCommand(bool state, HALight *sender)
+  static void staticOnStateCommandSwitch(bool state, HASwitch *sender)
+  {
+    OutputPin *instance = findInstanceSwitch(sender);
+    if (instance)
+    {
+      instance->onStateCommandSwitch(state, sender);
+    }
+  }
+
+  void onStateCommandLight(bool state, HALight *sender)
+  {
+    if (state)
+    {
+      on();
+    }
+    else
+    {
+      off();
+    }
+  }
+
+  void onStateCommandSwitch(bool state, HALight *sender)
+  {
+    if (state)
+    {
+      on();
+    }
+    else
+    {
+      off();
+    }
+  }
+
+  void onStateCommandSwitch(bool state, HASwitch *sender)
   {
     if (state)
     {
