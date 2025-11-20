@@ -35,30 +35,58 @@ static int pinCount = 0;
 void saveJsonToEEPROM(char *json, int startAddr = 0)
 {
   int len = strlen(json);
-  EEPROM.write(startAddr, len); // Store length first
 
+  // Validate length fits in a byte and EEPROM
+  if (len > 250 || len == 0)
+  {
+    Serial.println("ERROR: JSON too large or empty for EEPROM");
+    return;
+  }
+
+  EEPROM.write(startAddr, (byte)len);
+
+  // Calculate checksum while writing
+  byte checksum = 0;
   for (int i = 0; i < len; i++)
   {
     EEPROM.write(startAddr + 1 + i, json[i]);
+    checksum ^= json[i];
   }
+
+  // Store checksum at end
+  EEPROM.write(startAddr + 1 + len, checksum);
+  Serial.println("Saved to EEPROM with checksum");
 }
 
 String readJsonFromEEPROM(int startAddr = 0)
 {
   int len = EEPROM.read(startAddr);
 
-  // Limit max length to prevent stack overflow
-  if (len > 250 || len == 0)
+  // Limit max length to prevent stack overflow, check for uninitialized EEPROM
+  if (len > 250 || len == 0 || len == 0xFF)
   {
+    Serial.println("Invalid EEPROM length");
     return "";
   }
 
   String result = "";
   result.reserve(len + 1);
 
+  // Read data and calculate checksum
+  byte checksum = 0;
   for (int i = 0; i < len; i++)
   {
-    result += (char)EEPROM.read(startAddr + 1 + i);
+    char c = (char)EEPROM.read(startAddr + 1 + i);
+    result += c;
+    checksum ^= c;
+  }
+
+  // Verify checksum
+  byte storedChecksum = EEPROM.read(startAddr + 1 + len);
+  if (checksum != storedChecksum)
+  {
+    Serial.println("ERROR: EEPROM checksum mismatch - data corrupted");
+    return "";
   }
 
   return result;
