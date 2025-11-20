@@ -28,9 +28,9 @@ public:
 class OutputPin : public Pin
 {
 private:
-  // Reference to global pin registry (defined in quadro.ino)
-  static Pin **globalPins;
-  static int *globalPinCount;
+  // Reference to global pin registry
+  inline static Pin **globalPins = nullptr;
+  inline static int *globalPinCount = nullptr;
 
   static OutputPin *findInstanceByLight(HALight *haObject)
   {
@@ -71,6 +71,7 @@ public:
   HASwitch *haSwitch;
 
   // Setup global registry reference
+  // we need this for findInstanceBySwitch/ByLight
   static void setupGlobalRegistry(Pin **pins, int *count)
   {
     globalPins = pins;
@@ -113,12 +114,20 @@ public:
     pinStatus = false;
   }
 
+  /* 
+  These static methods staticOnState* (classmethods in Python) exist because we
+  cannot pass a normal class function to haSwitch/haLight->onCommand.
+
+  Since we no longer know "who" we are, we call findInstanceBy* to loop through
+  the global Pin array to find "us" out by the sender and then call
+  mqttSetter to change the Pin status
+  */
   static void staticOnStateLight(bool state, HALight *sender)
   {
     OutputPin *instance = findInstanceByLight(sender);
     if (instance)
     {
-      instance->onStateCommand(state);
+      instance->mqttSetter(state);
     }
   }
 
@@ -127,11 +136,11 @@ public:
     OutputPin *instance = findInstanceBySwitch(sender);
     if (instance)
     {
-      instance->onStateCommand(state);
+      instance->mqttSetter(state);
     }
   }
 
-  void onStateCommand(bool state)
+  void mqttSetter(bool state)
   {
     if (state)
     {

@@ -22,19 +22,15 @@ EthernetClient httpRestClient;
 HADevice device("quadro");
 HAMqtt mqtt(ethMqttClient, device);
 String mqtt_server;
-String baseTopic = "pippo/";
 String remoteHttpHost = "";
 
-PinManager *manager[2]; // Will be initialized in setup() after MQTT
 aREST rest = aREST();
 
-// Global pin registry for callbacks
+// Global registry of PinManagers
+PinManager *manager[2];
 static Pin *pins[3];
 static int pinCount = 0;
 
-// Initialize static members of OutputPin
-Pin **OutputPin::globalPins = nullptr;
-int *OutputPin::globalPinCount = nullptr;
 
 void saveJsonToEEPROM(char *json, int startAddr = 0)
 {
@@ -135,13 +131,15 @@ void setup()
   rest.function("replace_config", replaceConfig);
   ethServer.begin();
 
+  // Declare HALights and HASwitches
   HALight *light = new HALight("testlight");
   light->setName("Test Light");
 
   HASwitch *haswitch = new HASwitch("switch1");
   haswitch->setName("sw Test 1");
 
-  // Setup global registry first (before creating OutputPins)
+  // Hand off "pins" to OutputPin class
+  // this is a global value for the entire class
   OutputPin::setupGlobalRegistry(pins, &pinCount);
 
   pins[0] = new OutputPin(CONTROLLINO_D0, light);

@@ -1,13 +1,14 @@
-#include <ArduinoJson.h>  // https://arduinojson.org/
+#include <ArduinoJson.h> // https://arduinojson.org/
 
 #ifndef DEBUG_MODE
 #define DEBUG_MODE 0
 #endif
 
 // Forward declaration of function defined in quadro.ino
-void saveJsonToEEPROM(char* json, int startAddr = 0);
+void saveJsonToEEPROM(char *json, int startAddr = 0);
 
-int resetController(String command) {
+int resetController(String command)
+{
   wdt_enable(WDTO_15MS);
   while (1)
   {
@@ -19,7 +20,8 @@ int replaceConfig(String data)
 {
   JsonDocument jsonConfig;
 
-  if (DEBUG_MODE) {
+  if (DEBUG_MODE)
+  {
     Serial.println("Parsing incoming JSON");
     Serial.println(data);
   }
@@ -29,19 +31,21 @@ int replaceConfig(String data)
   data.replace("%20", " ");
   data.replace("%22", "\"");
 
-  if (DEBUG_MODE) {
+  if (DEBUG_MODE)
+  {
     Serial.println("URL-decoded data:");
     Serial.println(data);
   }
 
   StaticJsonDocument<256> doc;
   DeserializationError error = deserializeJson(doc, data);
-  if (error) {
+  if (error)
+  {
     Serial.println("New config not valid");
     Serial.println(error.c_str());
     return 1;
   }
   Serial.println("Config valid, writing to EEPROM...");
-  saveJsonToEEPROM((char*)data.c_str());
+  saveJsonToEEPROM((char *)data.c_str());
   return 0;
 }
