@@ -39,8 +39,13 @@ private:
 
     for (int i = 0; i < *globalPinCount; i++)
     {
-      // Safe to cast since we check if it's an OutputPin by checking haLight/haSwitch
-      OutputPin *outPin = static_cast<OutputPin*>(globalPins[i]);
+      /*
+      Use dynamic_cast to safely check if this is actually an OutputPin
+      Return nullptr if globalPins[i] is a RemoteOutputPin* (not an OutputPin*)
+      Return a valid OutputPin* only if it's actually an OutputPin instance
+      The if (outPin && ...) check will skip non-OutputPin entries safely
+      */
+      OutputPin *outPin = dynamic_cast<OutputPin *>(globalPins[i]);
       if (outPin && outPin->haLight == haObject)
       {
         return outPin;
@@ -51,12 +56,13 @@ private:
 
   static OutputPin *findInstanceBySwitch(HASwitch *haObject)
   {
-    if (!globalPins || !globalPinCount) return nullptr;
+    if (!globalPins || !globalPinCount)
+      return nullptr;
 
     for (int i = 0; i < *globalPinCount; i++)
     {
-      // Safe to cast since we check if it's an OutputPin by checking haLight/haSwitch
-      OutputPin *outPin = static_cast<OutputPin*>(globalPins[i]);
+      // Use dynamic_cast to safely check if this is actually an OutputPin
+      OutputPin *outPin = dynamic_cast<OutputPin *>(globalPins[i]);
       if (outPin && outPin->haSwitch == haObject)
       {
         return outPin;
