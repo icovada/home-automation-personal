@@ -12,6 +12,14 @@
 #include <Arduino.h>
 #include <ArduinoHA.h>
 
+enum buttonStateMachine
+{
+  UNPRESSED,
+  PRESSED,
+  LONG_PRESSED,
+  RELEASED
+};
+
 // External references to variables defined in quadro.ino
 extern HAMqtt mqtt;
 
@@ -284,20 +292,16 @@ public:
   bool analog = false;
   unsigned long debounce = millis();
   uint32_t activationTimer = 0;
-  HABinarySensor *sensorShort;
-  HABinarySensor *sensorLong;
+  HADeviceTrigger *shortPressTrigger;
+  HADeviceTrigger *longPressTrigger;
   Pin *pinShort;
   Pin *pinLong;
   String _name;
-
-  String _shortId;
-  String _longId;
-  String _shortName;
-  String _longName;
+  String _triggerId;
 
   PinManager()
-      : sensorShort(nullptr),
-        sensorLong(nullptr),
+      : shortPressTrigger(nullptr),
+        longPressTrigger(nullptr),
         pinShort(nullptr),
         pinLong(nullptr),
         _name("") {}
@@ -312,8 +316,8 @@ public:
       : inputPin(inPin),
         analog(isAnalog),
         _name(name),
-        sensorShort(nullptr),
-        sensorLong(nullptr),
+        shortPressTrigger(nullptr),
+        longPressTrigger(nullptr),
         pinShort(pinShort),
         pinLong(pinLong)
   {
@@ -321,29 +325,24 @@ public:
     pinMode(inputPin, INPUT);
 
     // Pre-compute strings to ensure they persist
-    _shortId = String(MQTT_NAME) + "_" + _name + "_short";
-    _longId = String(MQTT_NAME) + "_" + _name + "_long";
-    _shortName = String(MQTT_HUMAN_NAME) + " " + _name + " Short Press";
-    _longName = String(MQTT_HUMAN_NAME) + " " + _name + " Long Press";
+    _triggerId = String(MQTT_NAME) + "_" + _name;
 
-    sensorShort = new HABinarySensor(_shortId.c_str());
-    sensorLong = new HABinarySensor(_longId.c_str());
-    sensorShort->setName(_shortName.c_str());
-    sensorLong->setName(_longName.c_str());
+    shortPressTrigger = new HADeviceTrigger(HADeviceTrigger::ButtonShortPressType, _triggerId.c_str());
+    longPressTrigger = new HADeviceTrigger(HADeviceTrigger::ButtonLongPressType, _triggerId.c_str());
   }
 
   ~PinManager()
   {
-    if (sensorShort != nullptr)
-      delete sensorShort;
-    if (sensorLong != nullptr)
-      delete sensorLong;
+    if (shortPressTrigger != nullptr)
+      delete shortPressTrigger;
+    if (longPressTrigger != nullptr)
+      delete longPressTrigger;
   }
 
   void check()
   {
     // Skip if not initialized
-    if (inputPin == -1 || sensorShort == nullptr || sensorLong == nullptr)
+    if (inputPin == -1 || shortPressTrigger == nullptr || longPressTrigger == nullptr)
     {
       return;
     }
@@ -379,8 +378,8 @@ public:
         Serial.println("Long press");
         if (pinLong)
           pinLong->toggle();
-        if (sensorLong)
-          sensorLong->setState(true);
+        if (longPressTrigger)
+          longPressTrigger->trigger();
       }
       else if (!pinStatus && oldPinStatus)
       { // if Let go
@@ -391,19 +390,15 @@ public:
           Serial.println("Single press");
           if (pinShort)
             pinShort->toggle();
-          if (sensorShort)
-            sensorShort->setState(true);
+          if (shortPressTrigger)
+            shortPressTrigger->trigger();
         }
         else
         {
           oldPinStatus = pinStatus;
-          if (sensorLong)
-            sensorLong->setState(false);
+          if (longPressTrigger)
+            longPressTrigger->trigger();
         }
-      }
-      else if (!lock && sensorShort && sensorShort->getCurrentState() && (millis() - activationTimer > 400))
-      {
-        sensorShort->setState(false);
       }
       debounce = millis();
     }
