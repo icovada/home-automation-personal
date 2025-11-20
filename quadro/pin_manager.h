@@ -34,7 +34,8 @@ private:
 
   static OutputPin *findInstanceByLight(HALight *haObject)
   {
-    if (!globalPins || !globalPinCount) return nullptr;
+    if (!globalPins || !globalPinCount)
+      return nullptr;
 
     for (int i = 0; i < *globalPinCount; i++)
     {
@@ -114,7 +115,7 @@ public:
     pinStatus = false;
   }
 
-  /* 
+  /*
   These static methods staticOnState* (classmethods in Python) exist because we
   cannot pass a normal class function to haSwitch/haLight->onCommand.
 
