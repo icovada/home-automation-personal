@@ -321,10 +321,6 @@ public:
       delete sensorShort;
     if (sensorLong != nullptr)
       delete sensorLong;
-    if (pinShort != nullptr)
-      delete pinShort;
-    if (pinLong != nullptr)
-      delete pinLong;
   }
 
   void check()
