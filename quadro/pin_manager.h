@@ -32,7 +32,8 @@ private:
   static OutputPin *instances[3]; // Adjust size as needed
   static int instanceCount;
 
-  static void registerInstanceLight(HALight *light, OutputPin *pin)
+  template <typename T>
+  static void registerInstance(T *haObject, OutputPin *pin)
   {
     // Simple linear storage - could use a map in C++11
     for (int i = 0; i < instanceCount; i++)
@@ -46,26 +47,12 @@ private:
     }
   }
 
-  static void registerInstanceSwitch(HASwitch *haSwitch, OutputPin *pin)
-  {
-    // Simple linear storage - could use a map in C++11
-    for (int i = 0; i < instanceCount; i++)
-    {
-      if (instances[i] == pin)
-        return; // Already registered
-    }
-    if (instanceCount < 16)
-    {
-      instances[instanceCount++] = pin;
-    }
-  }
-
-  static OutputPin *findInstanceLight(HALight *light)
+  static OutputPin *findInstance(HALight *haObject)
   {
     // Find the instance that owns this HALight
     for (int i = 0; i < instanceCount; i++)
     {
-      if (instances[i]->haLight == light)
+      if (instances[i]->haLight == haObject)
       {
         return instances[i];
       }
@@ -73,13 +60,12 @@ private:
     return nullptr;
   }
 
-
-  static OutputPin *findInstanceSwitch(HASwitch *haSwitch)
+  static OutputPin *findInstance(HASwitch *haObject)
   {
     // Find the instance that owns this HASwitch
     for (int i = 0; i < instanceCount; i++)
     {
-      if (instances[i]->haSwitch == haSwitch)
+      if (instances[i]->haSwitch == haObject)
       {
         return instances[i];
       }
@@ -107,8 +93,8 @@ public:
         haLight(haLight),
         haSwitch(nullptr)
   {
-    registerInstanceLight(haLight, this);
-    haLight->onStateCommand(staticOnStateCommand);
+    registerInstance(haLight, this);
+    haLight->onStateCommand(staticOnState);
     init();
   }
 
@@ -117,8 +103,8 @@ public:
         haLight(nullptr),
         haSwitch(haSwitch)
   {
-    registerInstanceSwitch(haSwitch, this);
-    haSwitch->onCommand(staticOnStateCommandSwitch);
+    registerInstance(haSwitch, this);
+    haSwitch->onCommand(staticOnState);
     init();
   }
 
@@ -130,49 +116,18 @@ public:
   }
 
   // Static callback that retrieves the instance and calls the member function
-  static void staticOnStateCommand(bool state, HALight *sender)
+  template<typename T>
+  static void staticOnState(bool state, T *sender)
   {
-    OutputPin *instance = findInstanceLight(sender);
+    OutputPin *instance = findInstance(sender);
     if (instance)
     {
-      instance->onStateCommandLight(state, sender);
+      instance->onStateCommand(state, sender);
     }
   }
 
-  static void staticOnStateCommandSwitch(bool state, HASwitch *sender)
-  {
-    OutputPin *instance = findInstanceSwitch(sender);
-    if (instance)
-    {
-      instance->onStateCommandSwitch(state, sender);
-    }
-  }
-
-  void onStateCommandLight(bool state, HALight *sender)
-  {
-    if (state)
-    {
-      on();
-    }
-    else
-    {
-      off();
-    }
-  }
-
-  void onStateCommandSwitch(bool state, HALight *sender)
-  {
-    if (state)
-    {
-      on();
-    }
-    else
-    {
-      off();
-    }
-  }
-
-  void onStateCommandSwitch(bool state, HASwitch *sender)
+  template<typename T>
+  void onStateCommand(bool state, T *sender)
   {
     if (state)
     {
