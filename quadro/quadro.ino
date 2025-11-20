@@ -136,19 +136,36 @@ void setup()
   }
   else
   {
-    byte mac[6];
-    parseMacAddress(doc["net"]["mac"], mac);
-    IPAddress ip = parseIPAddress(doc["net"]["ip"]);
-    IPAddress mask = parseIPAddress(doc["net"]["mask"]);
-    IPAddress gw = parseIPAddress(doc["net"]["gw"]);
-    IPAddress dns = parseIPAddress(doc["net"]["dns"]);
+    // Validate required JSON fields exist
+    if (!doc.containsKey("net") || !doc["net"].containsKey("mac") ||
+        !doc["net"].containsKey("ip") || !doc["net"].containsKey("mask") ||
+        !doc["net"].containsKey("gw") || !doc["net"].containsKey("dns"))
+    {
+      Serial.println("ERROR: JSON missing required network fields, falling back to DHCP");
+      byte mac[] = {0xAE, 0xAD, 0xBE, 0xEF, 0xFE, 0xFF};
+      Ethernet.begin(mac);
+    }
+    else
+    {
+      byte mac[6];
+      parseMacAddress(doc["net"]["mac"], mac);
+      IPAddress ip = parseIPAddress(doc["net"]["ip"]);
+      IPAddress mask = parseIPAddress(doc["net"]["mask"]);
+      IPAddress gw = parseIPAddress(doc["net"]["gw"]);
+      IPAddress dns = parseIPAddress(doc["net"]["dns"]);
 
-    // start the Ethernet connection and the server:
-    Ethernet.begin(mac, ip, dns, gw, mask);
-    remoteHttpHost = doc["remote"].as<String>();
-    Serial.println("Init remote http to " + remoteHttpHost);
-    Serial.print("Local IP: ");
-    Serial.println(Ethernet.localIP());
+      // start the Ethernet connection and the server:
+      Ethernet.begin(mac, ip, dns, gw, mask);
+
+      if (doc.containsKey("remote"))
+      {
+        remoteHttpHost = doc["remote"].as<String>();
+        Serial.println("Init remote http to " + remoteHttpHost);
+      }
+
+      Serial.print("Local IP: ");
+      Serial.println(Ethernet.localIP());
+    }
   }
 
   rest.set_id("1");
@@ -179,7 +196,16 @@ void setup()
   manager[0] = new PinManager(CONTROLLINO_A0, true, "Test1", pins[0], pins[1]);
   manager[1] = new PinManager(CONTROLLINO_A1, true, "Test2", pins[2]);
 
-  mqtt.begin(doc["mqtt"].as<const char *>());
+  // Validate MQTT config exists before initializing
+  if (doc.containsKey("mqtt") && doc["mqtt"].is<const char *>())
+  {
+    mqtt.begin(doc["mqtt"].as<const char *>());
+    Serial.println("MQTT initialized");
+  }
+  else
+  {
+    Serial.println("WARNING: MQTT config missing, MQTT not initialized");
+  }
 
   // Enable watchdog. Reset PLC if not reset every 500ms
   wdt_enable(WDTO_500MS);
