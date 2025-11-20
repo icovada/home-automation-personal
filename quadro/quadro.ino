@@ -86,24 +86,6 @@ IPAddress parseIPAddress(JsonArrayConst address)
       address[3].as<int>());
 }
 
-void onMqttMessage(const char *topic, const uint8_t *payload, uint16_t length)
-{
-  // This callback is called when message from MQTT broker is received.
-  // Please note that you should always verify if the message's topic is the one you expect.
-  // For example: if (memcmp(topic, "myCustomTopic") == 0) { ... }
-  if (DEBUG_MODE)
-  {
-    Serial.print("Message arrived [");
-    Serial.print(topic);
-    Serial.print("] ");
-    for (unsigned int i = 0; i < length; i++)
-    {
-      Serial.print((char)payload[i]);
-    }
-    Serial.println();
-  }
-}
-
 void setup()
 {
   wdt_disable(); // Disable watchdog timer immediately
@@ -151,10 +133,6 @@ void setup()
   // Register custom functions
   rest.function("reset", resetController);
   rest.function("replace_config", replaceConfig);
-  rest.function("set_digital", setDigitalPin);
-  rest.function("get_digital", getDigitalPin);
-  rest.function("set_analog", setAnalogPin);
-  rest.function("get_analog", getAnalogPin);
   ethServer.begin();
 
   HALight *light = new HALight("testlight");
@@ -175,7 +153,6 @@ void setup()
   manager[0] = new PinManager(CONTROLLINO_A0, true, "Test1", pins[0], pins[1]);
   manager[1] = new PinManager(CONTROLLINO_A1, true, "Test2", pins[2]);
 
-  mqtt.onMessage(onMqttMessage);
   mqtt.begin(doc["mqtt"].as<const char *>());
 
   Serial.println("End");
