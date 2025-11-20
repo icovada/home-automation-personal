@@ -396,8 +396,6 @@ public:
         else
         {
           oldPinStatus = pinStatus;
-          if (longPressTrigger)
-            longPressTrigger->trigger();
         }
       }
       debounce = millis();
