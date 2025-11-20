@@ -3,94 +3,43 @@
 #include <ESP8266WebServer.h>
 #include <ESP8266WiFi.h>
 #include <OneWire.h>
-#include <PubSubClient.h>
+#include <ArduinoHA.h>
 #include <WiFiClient.h>
 #include "credentials.h"
 
-#define mqtt_server "192.168.1.2"
-#define mqtt_id "heating_flow_sensor_new"
-
-#define BAUDRATE 115200
-
 OneWire ds(D4);
-DallasTemperature sensors(&ds);
+DallasTemperature sensorManager(&ds);
+String mqtt_server = "mqtt.in.tabbo.it"; 
 
-byte sensorlist[10][8] = {{0x28, 0xFF, 0xFD, 0x09, 0x60, 0x18, 0x03, 0x4C},
-                          {0x10, 0x44, 0xBA, 0x59, 0x03, 0x08, 0x00, 0x79},
-                          {0x10, 0x5E, 0x84, 0x59, 0x03, 0x08, 0x00, 0xCB},
-                          {0x10, 0x0E, 0xE5, 0x59, 0x03, 0x08, 0x00, 0x39},
-                          {0x28, 0xFF, 0x7B, 0x0A, 0x60, 0x18, 0x03, 0x93},
-                          {0x28, 0xFF, 0x93, 0x0D, 0x60, 0x18, 0x03, 0xF1},
-                          {0x28, 0xFF, 0x41, 0x06, 0x60, 0x18, 0x03, 0xB8},
-                          {0x28, 0xFF, 0xAA, 0x0D, 0x60, 0x18, 0x03, 0x86},
-                          {0x10, 0x21, 0xD3, 0x59, 0x03, 0x08, 0x00, 0xB3},
-                          {0x28, 0xFF, 0xEE, 0x20, 0x60, 0x18, 0x03, 0x9D}};
+byte sensorlist[10][8] = {
+    {0x28, 0xFF, 0xEE, 0x20, 0x60, 0x18, 0x03, 0x9D},
+    {0x28, 0xFF, 0xFD, 0x09, 0x60, 0x18, 0x03, 0x4C},
+    {0x10, 0x44, 0xBA, 0x59, 0x03, 0x08, 0x00, 0x79},
+    {0x10, 0x5E, 0x84, 0x59, 0x03, 0x08, 0x00, 0xCB},
+    {0x10, 0x0E, 0xE5, 0x59, 0x03, 0x08, 0x00, 0x39},
+    {0x28, 0xFF, 0x7B, 0x0A, 0x60, 0x18, 0x03, 0x93},
+    {0x28, 0xFF, 0x93, 0x0D, 0x60, 0x18, 0x03, 0xF1},
+    {0x28, 0xFF, 0x41, 0x06, 0x60, 0x18, 0x03, 0xB8},
+    {0x28, 0xFF, 0xAA, 0x0D, 0x60, 0x18, 0x03, 0x86},
+    {0x10, 0x21, 0xD3, 0x59, 0x03, 0x08, 0x00, 0xB3}};
 
-WiFiClient espClient;
-PubSubClient client(espClient);
+static HASensorNumber *sensorNumber[10];
+
+WiFiClient mqttClient;
+HADevice device("heating_sensor");
+HAMqtt mqtt(mqttClient, device);
 
 ESP8266WebServer httpServer(80);
 ESP8266HTTPUpdateServer httpUpdater;
 
 unsigned long oldmillis = 0;
 
-// Something to hold the float as we string them
-
-// connessione WiFi
-// ---------------------------------------------------------------------------|
-void setup_wifi()
-{
-  delay(10);
-  Serial.println("///////////////// - WiFi - /////////////////");
-  Serial.print("Connessione a ");
-  Serial.println(wifi_ssid);
-  WiFi.mode(WIFI_STA);
-  WiFi.begin(wifi_ssid, wifi_password);
-  while (WiFi.status() != WL_CONNECTED)
-  {
-    delay(500);
-    Serial.print(".");
-  }
-  Serial.println("Connesso");
-  Serial.print("IP=");
-  Serial.println(WiFi.localIP());
-  Serial.println("////////////////////////////////////////////");
-  Serial.println("");
-}
-
-// connessione MQTT
-// ---------------------------------------------------------------------------|
-void reconnect()
-{
-  unsigned long disconnectMillis = millis();
-  while (!client.connected())
-  {
-    Serial.println("///////////////// - MQTT - /////////////////");
-    Serial.println("Connessione...");
-
-    if (client.connect(mqtt_id))
-    {
-      // digitalWrite(D2,HIGH);
-      Serial.println("Connesso");
-      Serial.println("////////////////////////////////////////////");
-      client.publish("/riscaldamento/tubi", "READY");
-    }
-    else
-    {
-      Serial.print("Connessione fallita, rc=");
-      Serial.println(client.state());
-      Serial.println("Nuovo tentativo tra 5 secondi");
-      delay(5000);
-    }
-  }
-}
-
 void calculateTemp(byte *sensor)
 {
   ds.reset();
   ds.select(sensor);
   ds.write(0x44, 0); // start conversion, without parasite power
-  client.loop();
+  mqtt.loop();
   for (int i = 0; i < 10; i++)
   {
     delay(100);
@@ -147,16 +96,99 @@ float readTemp(byte *sensor)
 
 void setup()
 {
-  Serial.begin(BAUDRATE);
+  Serial.begin(115200);
 
-  setup_wifi();
-  client.setServer(mqtt_server, 1883);
+  WiFi.mode(WIFI_STA);
+  WiFi.begin(wifi_ssid, wifi_password);
+  while (WiFi.status() != WL_CONNECTED)
+  {
+    delay(500);
+    Serial.print(".");
+  }
 
-  sensors.begin();
+  device.setName("Cippino Riscaldamento");
+  device.setUniqueId((const byte *)"cippinoriscaldamento", 9);
+
+  sensorManager.begin();
   for (int i = 0; i < 10; i++)
   {
-    sensors.setResolution(sensorlist[i], 12);
+    sensorManager.setResolution(sensorlist[i], 12);
   }
+
+  sensorNumber[0] = new HASensorNumber("tubo1", HASensorNumber::PrecisionP2);
+  sensorNumber[0]->setName("Ritorno 1 Salotto Nord");
+  sensorNumber[0]->setUnitOfMeasurement("°C");
+  sensorNumber[0]->setIcon("mdi:thermometer");
+  sensorNumber[0]->setDeviceClass("temperature");
+  sensorNumber[0]->setStateClass("measurement");
+
+  sensorNumber[1] = new HASensorNumber("tubo2", HASensorNumber::PrecisionP2);
+  sensorNumber[1]->setName("Ritorno 2 Salotto Sud");
+  sensorNumber[1]->setUnitOfMeasurement("°C");
+  sensorNumber[1]->setIcon("mdi:thermometer");
+  sensorNumber[1]->setDeviceClass("temperature");
+  sensorNumber[1]->setStateClass("measurement");
+
+  sensorNumber[2] = new HASensorNumber("tubo3", HASensorNumber::PrecisionP2);
+  sensorNumber[2]->setName("Ritorno 3 Cucina");
+  sensorNumber[2]->setUnitOfMeasurement("°C");
+  sensorNumber[2]->setIcon("mdi:thermometer");
+  sensorNumber[2]->setDeviceClass("temperature");
+  sensorNumber[2]->setStateClass("measurement");
+
+  sensorNumber[3] = new HASensorNumber("tubo4", HASensorNumber::PrecisionP2);
+  sensorNumber[3]->setName("Ritorno 4 Studio Sud");
+  sensorNumber[3]->setUnitOfMeasurement("°C");
+  sensorNumber[3]->setIcon("mdi:thermometer");
+  sensorNumber[3]->setDeviceClass("temperature");
+  sensorNumber[3]->setStateClass("measurement");
+
+  sensorNumber[4] = new HASensorNumber("tubo5", HASensorNumber::PrecisionP2);
+  sensorNumber[4]->setName("Ritorno 5 Studio Nord");
+  sensorNumber[4]->setUnitOfMeasurement("°C");
+  sensorNumber[4]->setIcon("mdi:thermometer");
+  sensorNumber[4]->setDeviceClass("temperature");
+  sensorNumber[4]->setStateClass("measurement");
+
+  sensorNumber[5] = new HASensorNumber("tubo6", HASensorNumber::PrecisionP2);
+  sensorNumber[5]->setName("Ritorno 6 Sgabuzzino");
+  sensorNumber[5]->setUnitOfMeasurement("°C");
+  sensorNumber[5]->setIcon("mdi:thermometer");
+  sensorNumber[5]->setDeviceClass("temperature");
+  sensorNumber[5]->setStateClass("measurement");
+
+  sensorNumber[6] = new HASensorNumber("tubo7", HASensorNumber::PrecisionP2);
+  sensorNumber[6]->setName("Ritorno 7 Camera Est");
+  sensorNumber[6]->setUnitOfMeasurement("°C");
+  sensorNumber[6]->setIcon("mdi:thermometer");
+  sensorNumber[6]->setDeviceClass("temperature");
+  sensorNumber[6]->setStateClass("measurement");
+
+  sensorNumber[7] = new HASensorNumber("tubo8", HASensorNumber::PrecisionP2);
+  sensorNumber[7]->setName("Ritorno 8 Camera Ovest");
+  sensorNumber[7]->setUnitOfMeasurement("°C");
+  sensorNumber[7]->setIcon("mdi:thermometer");
+  sensorNumber[7]->setDeviceClass("temperature");
+  sensorNumber[7]->setStateClass("measurement");
+
+  sensorNumber[8] = new HASensorNumber("tubo9", HASensorNumber::PrecisionP2);
+  sensorNumber[8]->setName("Ritorno 9 Bagno");
+  sensorNumber[8]->setUnitOfMeasurement("°C");
+  sensorNumber[8]->setIcon("mdi:thermometer");
+  sensorNumber[8]->setDeviceClass("temperature");
+  sensorNumber[8]->setStateClass("measurement");
+  
+  sensorNumber[9] = new HASensorNumber("tubo0", HASensorNumber::PrecisionP2);
+  sensorNumber[9]->setName("Mandata");
+  sensorNumber[9]->setUnitOfMeasurement("°C");
+  sensorNumber[9]->setIcon("mdi:thermometer");
+  sensorNumber[9]->setDeviceClass("temperature");
+  sensorNumber[9]->setStateClass("measurement");
+
+  device.enableSharedAvailability();
+  device.enableLastWill();
+
+  mqtt.begin(mqtt_server.c_str());
 
   httpUpdater.setup(&httpServer);
   httpServer.begin();
@@ -164,12 +196,14 @@ void setup()
 
 void loop()
 {
-  if (!client.connected())
-  {
-    reconnect();
-  }
-  client.loop();
   httpServer.handleClient();
+
+  // Reconnect to MQTT if connection lost
+  if (!mqtt.isConnected())
+  {
+    mqtt.begin(mqtt_server.c_str());
+  }
+  mqtt.loop();
 
   if (millis() / 1000 > oldmillis + 10)
   {
@@ -186,17 +220,10 @@ void loop()
     for (int i = 0; i < 10; i++)
     {
       float reading;
-      char outstring[15];
       reading = readTemp(sensorlist[i]);
       if (reading != 250)
       {
-        Serial.print("Flow in: ");
-        Serial.println(reading);
-        dtostrf(reading, 6, 4, outstring);
-        String topic = "/riscaldamento/tubi/";
-        topic = topic + String(i);
-        Serial.println(topic);
-        client.publish(String(topic).c_str(), String(outstring).c_str());
+        sensorNumber[i]->setValue(reading);
         delay(100);
       }
     }
