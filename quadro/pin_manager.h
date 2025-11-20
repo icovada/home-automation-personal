@@ -19,6 +19,9 @@ class Pin
 {
   // Abstract Base Class for OutputPin and RemoteOutputPin
 public:
+  enum PinType { TYPE_OUTPUT, TYPE_REMOTE };
+  virtual PinType getType() const = 0; // Pure virtual - subclasses must implement
+
   virtual void on() {}
   virtual void off() {}
   virtual void toggle() {}
@@ -39,16 +42,14 @@ private:
 
     for (int i = 0; i < *globalPinCount; i++)
     {
-      /*
-      Use dynamic_cast to safely check if this is actually an OutputPin
-      Return nullptr if globalPins[i] is a RemoteOutputPin* (not an OutputPin*)
-      Return a valid OutputPin* only if it's actually an OutputPin instance
-      The if (outPin && ...) check will skip non-OutputPin entries safely
-      */
-      OutputPin *outPin = dynamic_cast<OutputPin *>(globalPins[i]);
-      if (outPin && outPin->haLight == haObject)
+      // Check type first to ensure safe casting
+      if (globalPins[i] && globalPins[i]->getType() == Pin::TYPE_OUTPUT)
       {
-        return outPin;
+        OutputPin *outPin = static_cast<OutputPin *>(globalPins[i]);
+        if (outPin->haLight == haObject)
+        {
+          return outPin;
+        }
       }
     }
     return nullptr;
@@ -61,11 +62,14 @@ private:
 
     for (int i = 0; i < *globalPinCount; i++)
     {
-      // Use dynamic_cast to safely check if this is actually an OutputPin
-      OutputPin *outPin = dynamic_cast<OutputPin *>(globalPins[i]);
-      if (outPin && outPin->haSwitch == haObject)
+      // Check type first to ensure safe casting
+      if (globalPins[i] && globalPins[i]->getType() == Pin::TYPE_OUTPUT)
       {
-        return outPin;
+        OutputPin *outPin = static_cast<OutputPin *>(globalPins[i]);
+        if (outPin->haSwitch == haObject)
+        {
+          return outPin;
+        }
       }
     }
     return nullptr;
@@ -84,6 +88,9 @@ public:
     globalPins = pins;
     globalPinCount = count;
   }
+
+  // Implement getType() for OutputPin
+  PinType getType() const override { return Pin::TYPE_OUTPUT; }
 
   OutputPin()
       : haLight(nullptr),
@@ -208,6 +215,9 @@ public:
   String remoteHost;
   int remotePort = 80;
   int pinnumber = -1;
+
+  // Implement getType() for RemoteOutputPin
+  PinType getType() const override { return Pin::TYPE_REMOTE; }
 
   RemoteOutputPin(String host, int port, int pinnumber)
       : remoteHost(host),
