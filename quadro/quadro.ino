@@ -34,7 +34,6 @@ PinManager *manager[MANAGER_COUNT];
 static Pin *pins[PIN_COUNT];
 static int pinCount = 0;
 
-
 void saveJsonToEEPROM(char *json, int startAddr = 0)
 {
   int len = strlen(json);
