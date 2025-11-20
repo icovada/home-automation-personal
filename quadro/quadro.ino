@@ -153,6 +153,8 @@ void setup()
 
   mqtt.begin(doc["mqtt"].as<const char *>());
 
+  // Enable watchdog. Reset PLC if not reset every 500ms
+  wdt_enable(WDTO_500MS);
   Serial.println("End");
 }
 
@@ -167,4 +169,7 @@ void loop()
   {
     manager[i]->check();
   }
+
+  // Tell watchdog to chill
+  wdt_reset();
 }
