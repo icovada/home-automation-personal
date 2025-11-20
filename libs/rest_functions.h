@@ -1,4 +1,5 @@
 #include <ArduinoJson.h> // https://arduinojson.org/
+#include <avr/wdt.h>
 
 #ifndef DEBUG_MODE
 #define DEBUG_MODE 0

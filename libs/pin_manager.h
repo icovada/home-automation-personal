@@ -11,6 +11,7 @@
 
 #include <Arduino.h>
 #include <ArduinoHA.h>
+#include <Ethernet.h>
 
 enum buttonStateMachine
 {
