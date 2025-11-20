@@ -53,10 +53,17 @@ void saveJsonToEEPROM(char *json, int startAddr = 0)
   {
     EEPROM.write(startAddr + 1 + i, json[i]);
     checksum ^= json[i];
+
+    // Reset watchdog every 32 bytes to prevent timeout during long writes
+    if (i % 32 == 0)
+    {
+      wdt_reset();
+    }
   }
 
   // Store checksum at end
   EEPROM.write(startAddr + 1 + len, checksum);
+  wdt_reset(); // Final reset before completing
   Serial.println("Saved to EEPROM with checksum");
 }
 
