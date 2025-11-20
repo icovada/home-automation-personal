@@ -27,8 +27,11 @@ String remoteHttpHost = "";
 aREST rest = aREST();
 
 // Global registry of PinManagers
-PinManager *manager[2];
-static Pin *pins[3];
+#define MANAGER_COUNT 2
+#define PIN_COUNT 3
+
+PinManager *manager[MANAGER_COUNT];
+static Pin *pins[PIN_COUNT];
 static int pinCount = 0;
 
 
@@ -219,7 +222,7 @@ void loop()
 
   mqtt.loop();
 
-  for (int i = 0; i < 2; i++)
+  for (int i = 0; i < MANAGER_COUNT; i++)
   {
     manager[i]->check();
   }
