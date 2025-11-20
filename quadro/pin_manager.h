@@ -28,46 +28,37 @@ public:
 class OutputPin : public Pin
 {
 private:
-  // Static map to associate HALight pointers with OutputPin instances
-  static OutputPin *instances[3]; // Adjust size as needed
-  static int instanceCount;
+  // Reference to global pin registry (defined in quadro.ino)
+  static Pin **globalPins;
+  static int *globalPinCount;
 
-  template <typename T>
-  static void registerInstance(T *haObject, OutputPin *pin)
+  static OutputPin *findInstanceByLight(HALight *haObject)
   {
-    // Simple linear storage - could use a map in C++11
-    for (int i = 0; i < instanceCount; i++)
-    {
-      if (instances[i] == pin)
-        return; // Already registered
-    }
-    if (instanceCount < 16)
-    {
-      instances[instanceCount++] = pin;
-    }
-  }
+    if (!globalPins || !globalPinCount) return nullptr;
 
-  static OutputPin *findInstance(HALight *haObject)
-  {
-    // Find the instance that owns this HALight
-    for (int i = 0; i < instanceCount; i++)
+    for (int i = 0; i < *globalPinCount; i++)
     {
-      if (instances[i]->haLight == haObject)
+      // Safe to cast since we check if it's an OutputPin by checking haLight/haSwitch
+      OutputPin *outPin = static_cast<OutputPin*>(globalPins[i]);
+      if (outPin && outPin->haLight == haObject)
       {
-        return instances[i];
+        return outPin;
       }
     }
     return nullptr;
   }
 
-  static OutputPin *findInstance(HASwitch *haObject)
+  static OutputPin *findInstanceBySwitch(HASwitch *haObject)
   {
-    // Find the instance that owns this HASwitch
-    for (int i = 0; i < instanceCount; i++)
+    if (!globalPins || !globalPinCount) return nullptr;
+
+    for (int i = 0; i < *globalPinCount; i++)
     {
-      if (instances[i]->haSwitch == haObject)
+      // Safe to cast since we check if it's an OutputPin by checking haLight/haSwitch
+      OutputPin *outPin = static_cast<OutputPin*>(globalPins[i]);
+      if (outPin && outPin->haSwitch == haObject)
       {
-        return instances[i];
+        return outPin;
       }
     }
     return nullptr;
@@ -78,6 +69,13 @@ public:
   bool pinStatus = false;
   HALight *haLight;
   HASwitch *haSwitch;
+
+  // Setup global registry reference
+  static void setupGlobalRegistry(Pin **pins, int *count)
+  {
+    globalPins = pins;
+    globalPinCount = count;
+  }
 
   OutputPin()
       : haLight(nullptr),
@@ -93,8 +91,8 @@ public:
         haLight(haLight),
         haSwitch(nullptr)
   {
-    registerInstance(haLight, this);
-    haLight->onStateCommand(staticOnState);
+    haLight->setCurrentState(false);
+    haLight->onStateCommand(staticOnStateLight);
     init();
   }
 
@@ -103,8 +101,8 @@ public:
         haLight(nullptr),
         haSwitch(haSwitch)
   {
-    registerInstance(haSwitch, this);
-    haSwitch->onCommand(staticOnState);
+    haSwitch->setCurrentState(false);
+    haSwitch->onCommand(staticOnStateSwitch);
     init();
   }
 
@@ -115,19 +113,25 @@ public:
     pinStatus = false;
   }
 
-  // Static callback that retrieves the instance and calls the member function
-  template<typename T>
-  static void staticOnState(bool state, T *sender)
+  static void staticOnStateLight(bool state, HALight *sender)
   {
-    OutputPin *instance = findInstance(sender);
+    OutputPin *instance = findInstanceByLight(sender);
     if (instance)
     {
-      instance->onStateCommand(state, sender);
+      instance->onStateCommand(state);
     }
   }
 
-  template<typename T>
-  void onStateCommand(bool state, T *sender)
+  static void staticOnStateSwitch(bool state, HASwitch *sender)
+  {
+    OutputPin *instance = findInstanceBySwitch(sender);
+    if (instance)
+    {
+      instance->onStateCommand(state);
+    }
+  }
+
+  void onStateCommand(bool state)
   {
     if (state)
     {

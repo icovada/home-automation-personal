@@ -33,8 +33,8 @@ static Pin *pins[3];
 static int pinCount = 0;
 
 // Initialize static members of OutputPin
-OutputPin *OutputPin::instances[3] = {nullptr};
-int OutputPin::instanceCount = 0;
+Pin **OutputPin::globalPins = nullptr;
+int *OutputPin::globalPinCount = nullptr;
 
 void saveJsonToEEPROM(char *json, int startAddr = 0)
 {
@@ -162,6 +162,9 @@ void setup()
 
   HASwitch *haswitch = new HASwitch("switch1");
   haswitch->setName("sw Test 1");
+
+  // Setup global registry first (before creating OutputPins)
+  OutputPin::setupGlobalRegistry(pins, &pinCount);
 
   pins[0] = new OutputPin(CONTROLLINO_D0, light);
   pins[1] = new OutputPin(CONTROLLINO_D1, haswitch);
