@@ -132,7 +132,7 @@ IPAddress parseIPAddress(JsonArrayConst address)
 void setup()
 {
   wdt_disable(); // Disable watchdog timer immediately
-  Serial.begin(9600);
+  Serial.begin(115200);
   Serial.println("Start");
 
   Serial.println("Reading JSON from EEPROM...");
@@ -184,6 +184,8 @@ void setup()
     }
   }
 
+  device.setName(MQTT_HUMAN_NAME);
+
   rest.set_id("1");
   rest.set_name("quadro");
 
@@ -211,6 +213,9 @@ void setup()
   // Initialize PinManagers before MQTT
   manager[0] = new PinManager(CONTROLLINO_A0, true, "Test1", pins[0], pins[1]);
   manager[1] = new PinManager(CONTROLLINO_A1, true, "Test2", pins[2]);
+
+  // device.enableSharedAvailability();
+  // device.enableLastWill();
 
   // Validate MQTT config exists before initializing
   if (doc.containsKey("mqtt") && doc["mqtt"].is<const char *>())
