@@ -214,8 +214,8 @@ void setup()
   manager[0] = new PinManager(CONTROLLINO_A0, true, "Test1", pins[0], pins[1]);
   manager[1] = new PinManager(CONTROLLINO_A1, true, "Test2", pins[2]);
 
-  // device.enableSharedAvailability();
-  // device.enableLastWill();
+  device.enableSharedAvailability();
+  device.enableLastWill();
 
   // Validate MQTT config exists before initializing
   if (doc.containsKey("mqtt") && doc["mqtt"].is<const char *>())
@@ -229,7 +229,7 @@ void setup()
   }
 
   // Enable watchdog. Reset PLC if not reset every 500ms
-  wdt_enable(WDTO_500MS);
+  wdt_enable(WDTO_4S);
   Serial.println("End");
 }
 
