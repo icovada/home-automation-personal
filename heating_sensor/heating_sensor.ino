@@ -1,4 +1,3 @@
-#include <ArduinoJson.h>
 #include <DallasTemperature.h>
 #include <ESP8266HTTPUpdateServer.h>
 #include <ESP8266WebServer.h>
@@ -6,9 +5,7 @@
 #include <OneWire.h>
 #include <PubSubClient.h>
 #include <WiFiClient.h>
-
-#define wifi_ssid "Pinguino Curioso"
-#define wifi_password "Martina1/2"
+#include "credentials.h"
 
 #define mqtt_server "192.168.1.2"
 #define mqtt_id "heating_flow_sensor_new"
