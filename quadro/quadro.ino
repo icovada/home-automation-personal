@@ -119,9 +119,6 @@ void setup()
   Serial.begin(9600);
   Serial.println("Start");
 
-  String config = readJsonFromEEPROM();
-  JsonDocument jsonConfig;
-
   Serial.println("Reading JSON from EEPROM...");
   String readJson = readJsonFromEEPROM();
   Serial.println(readJson);
