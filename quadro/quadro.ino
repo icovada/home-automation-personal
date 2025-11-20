@@ -220,7 +220,8 @@ void setup()
   // Validate MQTT config exists before initializing
   if (doc.containsKey("mqtt") && doc["mqtt"].is<const char *>())
   {
-    mqtt.begin(doc["mqtt"].as<const char *>());
+    mqtt_server = doc["mqtt"].as<const char *>();
+    mqtt.begin(mqtt_server.c_str());
     Serial.println("MQTT initialized");
   }
   else
@@ -237,6 +238,12 @@ void loop()
 {
   httpRestClient = ethServer.available();
   rest.handle(httpRestClient);
+
+  // Reconnect to MQTT if connection lost
+  if (!mqtt.isConnected() && mqtt_server.length() > 0)
+  {
+    mqtt.begin(mqtt_server.c_str());
+  }
 
   mqtt.loop();
 
