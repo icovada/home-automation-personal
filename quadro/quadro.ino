@@ -97,6 +97,16 @@ String readJsonFromEEPROM(int startAddr = 0)
 
 void parseMacAddress(const char *macStr, byte *macArray)
 {
+  // Validate MAC string length (should be at least 12 characters for AABBCCDDEEFF)
+  if (!macStr || strlen(macStr) < 12)
+  {
+    Serial.println("ERROR: Invalid MAC address length");
+    // Set default MAC on error
+    byte defaultMac[] = {0xAE, 0xAD, 0xBE, 0xEF, 0xFE, 0xFF};
+    memcpy(macArray, defaultMac, 6);
+    return;
+  }
+
   for (int i = 0; i < 6; i++)
   {
     char hex[3] = {macStr[i * 2], macStr[i * 2 + 1], '\0'};
