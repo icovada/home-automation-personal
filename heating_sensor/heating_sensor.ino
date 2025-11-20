@@ -38,14 +38,16 @@ unsigned long oldmillis = 0;
 
 // connessione WiFi
 // ---------------------------------------------------------------------------|
-void setup_wifi() {
+void setup_wifi()
+{
   delay(10);
   Serial.println("///////////////// - WiFi - /////////////////");
   Serial.print("Connessione a ");
   Serial.println(wifi_ssid);
   WiFi.mode(WIFI_STA);
   WiFi.begin(wifi_ssid, wifi_password);
-  while (WiFi.status() != WL_CONNECTED) {
+  while (WiFi.status() != WL_CONNECTED)
+  {
     delay(500);
     Serial.print(".");
   }
@@ -58,18 +60,23 @@ void setup_wifi() {
 
 // connessione MQTT
 // ---------------------------------------------------------------------------|
-void reconnect() {
+void reconnect()
+{
   unsigned long disconnectMillis = millis();
-  while (!client.connected()) {
+  while (!client.connected())
+  {
     Serial.println("///////////////// - MQTT - /////////////////");
     Serial.println("Connessione...");
 
-    if (client.connect(mqtt_id)) {
+    if (client.connect(mqtt_id))
+    {
       // digitalWrite(D2,HIGH);
       Serial.println("Connesso");
       Serial.println("////////////////////////////////////////////");
       client.publish("/riscaldamento/tubi", "READY");
-    } else {
+    }
+    else
+    {
       Serial.print("Connessione fallita, rc=");
       Serial.println(client.state());
       Serial.println("Nuovo tentativo tra 5 secondi");
@@ -78,17 +85,20 @@ void reconnect() {
   }
 }
 
-void calculateTemp(byte *sensor) {
+void calculateTemp(byte *sensor)
+{
   ds.reset();
   ds.select(sensor);
   ds.write(0x44, 0); // start conversion, without parasite power
   client.loop();
-  for (int i = 0; i < 10; i++) {
+  for (int i = 0; i < 10; i++)
+  {
     delay(100);
   }
 }
 
-float readTemp(byte *sensor) {
+float readTemp(byte *sensor)
+{
   int i;
   float result;
   byte data[12];
@@ -98,24 +108,30 @@ float readTemp(byte *sensor) {
   ds.select(sensor);
   ds.write(0xBE); // read temperature
 
-  for (i = 0; i < 9; i++) { // we need 9 bytes
+  for (i = 0; i < 9; i++)
+  { // we need 9 bytes
     data[i] = ds.read();
     Serial.print(data[i]);
   }
 
-  if (OneWire::crc8(data, 8) != data[8]) { // Check CRC
+  if (OneWire::crc8(data, 8) != data[8])
+  {               // Check CRC
     return (250); // If temperature read is wrong, return ludicrously high temp
   }
 
   //////Code from library example sketch
   int16_t raw = (data[1] << 8) | data[0];
-  if (sensor[0] == 0x10) {
+  if (sensor[0] == 0x10)
+  {
     raw = raw << 3; // 9 bit resolution default
-    if (data[7] == 0x10) {
+    if (data[7] == 0x10)
+    {
       // "count remain" gives full 12 bit resolution
       raw = (raw & 0xFFF0) + 12 - data[6];
     }
-  } else {
+  }
+  else
+  {
     byte cfg = (data[4] & 0x60);
     // at lower res, the low bits are undefined, so let's zero them
     if (cfg == 0x00)
@@ -129,14 +145,16 @@ float readTemp(byte *sensor) {
   return ((float)raw / 16.0);
 }
 
-void setup() {
+void setup()
+{
   Serial.begin(BAUDRATE);
 
   setup_wifi();
   client.setServer(mqtt_server, 1883);
 
   sensors.begin();
-  for (int i = 0; i < 10; i++) {
+  for (int i = 0; i < 10; i++)
+  {
     sensors.setResolution(sensorlist[i], 12);
   }
 
@@ -144,28 +162,34 @@ void setup() {
   httpServer.begin();
 }
 
-void loop() {
-  if (!client.connected()) {
+void loop()
+{
+  if (!client.connected())
+  {
     reconnect();
   }
   client.loop();
   httpServer.handleClient();
 
-  if (millis() / 1000 > oldmillis + 10) {
+  if (millis() / 1000 > oldmillis + 10)
+  {
     // This will overflow every 40-ish days
     // but we don't care because it will never
     // be on for more than an hour or two
     Serial.println("Calculate temperature loop");
 
-    for (int i = 0; i < 10; i++) {
+    for (int i = 0; i < 10; i++)
+    {
       calculateTemp(sensorlist[i]);
     }
 
-    for (int i = 0; i < 10; i++) {
+    for (int i = 0; i < 10; i++)
+    {
       float reading;
       char outstring[15];
       reading = readTemp(sensorlist[i]);
-      if (reading != 250) {
+      if (reading != 250)
+      {
         Serial.print("Flow in: ");
         Serial.println(reading);
         dtostrf(reading, 6, 4, outstring);
