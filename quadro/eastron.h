@@ -138,15 +138,15 @@ private:
     frame[6] = crc & 0xFF;
     frame[7] = (crc >> 8) & 0xFF;
 
-    #ifdef DEBUG_MODE
-    Serial.print("Modbus TX: ");
-    for (int i = 0; i < 8; i++) {
-      if (frame[i] < 0x10) Serial.print("0");
-      Serial.print(frame[i], HEX);
-      Serial.print(" ");
+    if (DEBUG_MODE) {
+      Serial.print("Modbus TX: ");
+      for (int i = 0; i < 8; i++) {
+        if (frame[i] < 0x10) Serial.print("0");
+        Serial.print(frame[i], HEX);
+        Serial.print(" ");
+      }
+      Serial.println();
     }
-    Serial.println();
-    #endif
 
     // Flush any stale data in RX buffer before sending
     while (serial->available()) {
@@ -227,11 +227,11 @@ public:
 
     // Check timeout
     if (elapsed > timeout) {
-      #ifdef DEBUG_MODE
-      Serial.print("Modbus timeout after ");
-      Serial.print(elapsed);
-      Serial.println("ms");
-      #endif
+      if (DEBUG_MODE) {
+        Serial.print("Modbus timeout after ");
+        Serial.print(elapsed);
+        Serial.println("ms");
+      }
       state = MODBUS_IDLE;
       return -1; // Timeout
     }
@@ -241,59 +241,59 @@ public:
       responseBuffer[responseIndex++] = serial->read();
     }
 
-    #ifdef DEBUG_MODE
-    // Log received bytes if we got any new data
-    static uint16_t lastLoggedIndex = 0;
-    if (responseIndex > lastLoggedIndex) {
-      Serial.print("Modbus RX (");
-      Serial.print(responseIndex);
-      Serial.print(" bytes): ");
-      for (int i = 0; i < responseIndex; i++) {
-        if (responseBuffer[i] < 0x10) Serial.print("0");
-        Serial.print(responseBuffer[i], HEX);
-        Serial.print(" ");
+    if (DEBUG_MODE) {
+      // Log received bytes if we got any new data
+      static uint16_t lastLoggedIndex = 0;
+      if (responseIndex > lastLoggedIndex) {
+        Serial.print("Modbus RX (");
+        Serial.print(responseIndex);
+        Serial.print(" bytes): ");
+        for (int i = 0; i < responseIndex; i++) {
+          if (responseBuffer[i] < 0x10) Serial.print("0");
+          Serial.print(responseBuffer[i], HEX);
+          Serial.print(" ");
+        }
+        Serial.println();
+        lastLoggedIndex = responseIndex;
       }
-      Serial.println();
-      lastLoggedIndex = responseIndex;
+      if (state == MODBUS_IDLE) {
+        lastLoggedIndex = 0; // Reset for next request
+      }
     }
-    if (state == MODBUS_IDLE) {
-      lastLoggedIndex = 0; // Reset for next request
-    }
-    #endif
 
     // Check if we have complete response
     if (responseIndex >= expectedResponseSize) {
-      #ifdef DEBUG_MODE
-      Serial.print("Modbus response received in ");
-      Serial.print(elapsed);
-      Serial.print("ms, ");
-      Serial.print(responseIndex);
-      Serial.println(" bytes");
-      #endif
+      if (DEBUG_MODE) {
+        Serial.print("Modbus response received in ");
+        Serial.print(elapsed);
+        Serial.print("ms, ");
+        Serial.print(responseIndex);
+        Serial.println(" bytes");
+      }
 
       // Validate CRC
       uint16_t receivedCRC = responseBuffer[responseIndex - 2] | (responseBuffer[responseIndex - 1] << 8);
       uint16_t calculatedCRC = calculateCRC(responseBuffer, responseIndex - 2);
 
       if (receivedCRC != calculatedCRC) {
-        #ifdef DEBUG_MODE
-        Serial.print("CRC error: expected 0x");
-        Serial.print(calculatedCRC, HEX);
-        Serial.print(", got 0x");
-        Serial.println(receivedCRC, HEX);
-        #endif
+        if (DEBUG_MODE) {
+          Serial.print("CRC error: expected 0x");
+          Serial.print(calculatedCRC, HEX);
+          Serial.print(", got 0x");
+          Serial.println(receivedCRC, HEX);
+        }
         state = MODBUS_IDLE;
         return -3; // CRC error
       }
 
       // Check slave ID and function code
       if (responseBuffer[0] != slaveId || responseBuffer[1] != 0x04) {
-        #ifdef DEBUG_MODE
-        Serial.print("Invalid response: slave=");
-        Serial.print(responseBuffer[0]);
-        Serial.print(", func=");
-        Serial.println(responseBuffer[1]);
-        #endif
+        if (DEBUG_MODE) {
+          Serial.print("Invalid response: slave=");
+          Serial.print(responseBuffer[0]);
+          Serial.print(", func=");
+          Serial.println(responseBuffer[1]);
+        }
         state = MODBUS_IDLE;
         return -2; // Invalid response
       }

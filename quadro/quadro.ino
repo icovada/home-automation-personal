@@ -216,17 +216,17 @@ void loop()
     }
   } else if (result < 0) {
     // Error occurred - reset to retry
-    #ifdef DEBUG_MODE
-    Serial.print("Modbus error in state ");
-    Serial.print(modbusState);
-    Serial.print(": ");
-    switch(result) {
-      case -1: Serial.println("Timeout"); break;
-      case -2: Serial.println("Invalid response"); break;
-      case -3: Serial.println("CRC error"); break;
-      default: Serial.println(result); break;
+    if (DEBUG_MODE) {
+      Serial.print("Modbus error in state ");
+      Serial.print(modbusState);
+      Serial.print(": ");
+      switch(result) {
+        case -1: Serial.println("Timeout"); break;
+        case -2: Serial.println("Invalid response"); break;
+        case -3: Serial.println("CRC error"); break;
+        default: Serial.println(result); break;
+      }
     }
-    #endif
     modbusState = IDLE; // Reset state machine on error
   }
 
