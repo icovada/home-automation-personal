@@ -1,4 +1,107 @@
+#ifndef EEPROM_STUFF_H
+#define EEPROM_STUFF_H
+
 #include <EEPROM.h>
+
+// Forward declarations
+void saveStateToEEPROM(byte stateData);
+byte restoreStateFromEEPROM();
+void checkPendingStateSave();
+
+// State persistence configuration
+#define STATE_EEPROM_START 300  // Start address for state storage (away from config)
+#define STATE_ROTATION_SIZE 10   // Number of addresses to rotate through (wear leveling)
+#define STATE_SAVE_DELAY 5000    // Minimum ms between saves to reduce wear
+
+// Global variables for state management
+static unsigned long lastStateSave = 0;
+static bool pendingStateSave = false;
+static byte pendingStateData = 0;
+
+// Structure for state storage with validation
+struct StateStorage {
+    byte stateData;      // Bitmap of pin states
+    byte checksum;       // XOR checksum
+    byte rotation;       // Current rotation index for wear leveling
+};
+
+// Save pin states to EEPROM with wear leveling
+void saveStateToEEPROM(byte stateData) {
+    unsigned long currentTime = millis();
+
+    // Debounce: don't save if we just saved recently
+    if (currentTime - lastStateSave < STATE_SAVE_DELAY) {
+        pendingStateSave = true;
+        pendingStateData = stateData;
+        return;
+    }
+
+    // Read current rotation index
+    byte rotation = EEPROM.read(STATE_EEPROM_START);
+    if (rotation >= STATE_ROTATION_SIZE || rotation == 0xFF) {
+        rotation = 0;  // Initialize if corrupted
+    }
+
+    // Move to next rotation slot
+    rotation = (rotation + 1) % STATE_ROTATION_SIZE;
+
+    // Calculate address for this rotation
+    int addr = STATE_EEPROM_START + 1 + (rotation * sizeof(StateStorage));
+
+    // Calculate checksum
+    byte checksum = stateData ^ rotation ^ 0xA5;  // XOR with magic byte
+
+    // Write state data
+    EEPROM.write(addr, stateData);
+    EEPROM.write(addr + 1, checksum);
+    EEPROM.write(addr + 2, rotation);
+
+    // Update rotation index
+    EEPROM.write(STATE_EEPROM_START, rotation);
+
+    lastStateSave = currentTime;
+    pendingStateSave = false;
+
+    wdt_reset();  // Reset watchdog during EEPROM operations
+}
+
+// Restore pin states from EEPROM
+byte restoreStateFromEEPROM() {
+    // Read current rotation index
+    byte rotation = EEPROM.read(STATE_EEPROM_START);
+
+    // If uninitialized, return 0 (all lights off)
+    if (rotation >= STATE_ROTATION_SIZE || rotation == 0xFF) {
+        Serial.println("No saved state found, starting with all lights OFF");
+        return 0;
+    }
+
+    // Calculate address for current rotation
+    int addr = STATE_EEPROM_START + 1 + (rotation * sizeof(StateStorage));
+
+    // Read state data
+    byte stateData = EEPROM.read(addr);
+    byte checksum = EEPROM.read(addr + 1);
+    byte storedRotation = EEPROM.read(addr + 2);
+
+    // Validate checksum
+    byte expectedChecksum = stateData ^ storedRotation ^ 0xA5;
+    if (checksum != expectedChecksum || storedRotation != rotation) {
+        Serial.println("State checksum failed, starting with all lights OFF");
+        return 0;
+    }
+
+    Serial.print("Restored state from EEPROM: 0b");
+    Serial.println(stateData, BIN);
+    return stateData;
+}
+
+// Check if pending state needs to be saved (call in loop)
+void checkPendingStateSave() {
+    if (pendingStateSave && (millis() - lastStateSave >= STATE_SAVE_DELAY)) {
+        saveStateToEEPROM(pendingStateData);
+    }
+}
 
 void saveJsonToEEPROM(char *json, int startAddr = 0)
 {
@@ -94,3 +197,5 @@ IPAddress parseIPAddress(JsonArrayConst address)
         address[2].as<int>(),
         address[3].as<int>());
 }
+
+#endif  // EEPROM_STUFF_H

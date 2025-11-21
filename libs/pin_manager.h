@@ -12,6 +12,7 @@
 #include <Arduino.h>
 #include <ArduinoHA.h>
 #include <Ethernet.h>
+#include "eeprom_stuff.h"
 
 enum buttonStateMachine
 {
@@ -96,6 +97,49 @@ public:
   {
     globalPins = pins;
     globalPinCount = count;
+  }
+
+  // Build state bitmap and save to EEPROM
+  static void saveAllPinStates()
+  {
+    if (!globalPins || !globalPinCount)
+      return;
+
+    byte stateData = 0;
+    for (int i = 0; i < *globalPinCount; i++)
+    {
+      if (globalPins[i] && globalPins[i]->getType() == Pin::TYPE_OUTPUT)
+      {
+        OutputPin *outPin = static_cast<OutputPin *>(globalPins[i]);
+        if (outPin->pinStatus && i < 8)  // Only support up to 8 pins in one byte
+        {
+          stateData |= (1 << i);
+        }
+      }
+    }
+    saveStateToEEPROM(stateData);
+  }
+
+  // Restore state for a specific pin index
+  static void restorePinState(int index, byte stateData)
+  {
+    if (!globalPins || !globalPinCount || index >= *globalPinCount)
+      return;
+
+    if (globalPins[index] && globalPins[index]->getType() == Pin::TYPE_OUTPUT)
+    {
+      OutputPin *outPin = static_cast<OutputPin *>(globalPins[index]);
+      bool shouldBeOn = (stateData & (1 << index)) != 0;
+
+      if (shouldBeOn)
+      {
+        outPin->on();
+      }
+      else
+      {
+        outPin->off();
+      }
+    }
   }
 
   // Implement getType() for OutputPin
@@ -189,6 +233,7 @@ public:
     }
     digitalWrite(pinNumber, HIGH);
     pinStatus = true;
+    saveAllPinStates();  // Save state to EEPROM
   }
 
   void off() override
@@ -203,6 +248,7 @@ public:
     }
     digitalWrite(pinNumber, LOW);
     pinStatus = false;
+    saveAllPinStates();  // Save state to EEPROM
   }
 
   void toggle() override

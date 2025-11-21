@@ -116,10 +116,27 @@ void setup()
   // this is a global value for the entire class
   OutputPin::setupGlobalRegistry(pins, &pinCount);
 
+  // Restore saved states from EEPROM before creating pins
+  Serial.println("Restoring light states from EEPROM...");
+  byte savedStates = restoreStateFromEEPROM();
+
   pins[0] = new OutputPin(CONTROLLINO_D0, light);
   pins[1] = new OutputPin(CONTROLLINO_D1, haswitch);
   pins[2] = new RemoteOutputPin(remoteHttpHost, 80, 2);
   pinCount = 3;
+
+  // Apply restored states to OutputPins (skip index 2 which is RemoteOutputPin)
+  for (int i = 0; i < 2; i++)  // Only restore first 2 pins (OutputPins)
+  {
+    bool shouldBeOn = (savedStates & (1 << i)) != 0;
+    if (shouldBeOn && pins[i])
+    {
+      pins[i]->on();
+      Serial.print("Pin ");
+      Serial.print(i);
+      Serial.println(" restored to ON");
+    }
+  }
 
   // Initialize PinManagers before MQTT
   manager[0] = new PinManager(CONTROLLINO_A0, true, "Test1", pins[0], pins[1]);
@@ -236,6 +253,9 @@ void loop()
   {
     manager[i]->check();
   }
+
+  // Check if any pending state saves need to be written
+  checkPendingStateSave();
 
   // Tell watchdog to chill
   wdt_reset();
