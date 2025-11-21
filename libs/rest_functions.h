@@ -61,12 +61,22 @@ int replaceConfig(String data)
 int togglePin(String command)
 {
   int pin = command.toInt();
+  if (DEBUG_MODE)
+    Serial.println(command);
 
   // look for the Pin instance with the pin we want
-  for (int i=0; i<PIN_COUNT; i++){
-    if (pins[i]->pinNumber == pin){
+  for (int i = 0; i < PIN_COUNT; i++)
+  {
+    Serial.print("Searching pin, looking ");
+    Serial.println(pins[i]->pinNumber);
+    if (pins[i]->pinNumber == pin)
+    {
+      if (DEBUG_MODE)
+        Serial.println("Pin found!");
       pins[i]->toggle();
-      return 1; //success
+      return 1; // success
     }
   }
+  if (DEBUG_MODE)
+    Serial.println("Done");
 }

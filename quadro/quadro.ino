@@ -10,7 +10,7 @@
 #include "eeprom_stuff.h"
 #include "pin_manager.h"
 
-#define DEBUG_MODE 0
+#define DEBUG_MODE 1
 #define MANAGER_COUNT 2
 #define PIN_COUNT 3
 

@@ -87,7 +87,6 @@ private:
 
 public:
   bool pinStatus = false;
-  int pinNumber = -1;
   HALight *haLight;
   HASwitch *haSwitch;
 
@@ -107,25 +106,27 @@ public:
         haSwitch(nullptr) {}
 
   OutputPin(int pinnumber)
-      : pinNumber(pinnumber),
-        haLight(nullptr),
-        haSwitch(nullptr) {}
-
-  OutputPin(int pinnumber, HALight *haLight)
-      : pinNumber(pinnumber),
-        haLight(haLight),
+      : haLight(nullptr),
         haSwitch(nullptr)
   {
+    pinNumber = pinnumber;
+  }
+
+  OutputPin(int pinnumber, HALight *haLight)
+      : haLight(haLight),
+        haSwitch(nullptr)
+  {
+    pinNumber = pinnumber;
     haLight->setCurrentState(false);
     haLight->onStateCommand(staticOnStateLight);
     init();
   }
 
   OutputPin(int pinnumber, HASwitch *haSwitch)
-      : pinNumber(pinnumber),
-        haLight(nullptr),
+      : haLight(nullptr),
         haSwitch(haSwitch)
   {
+    pinNumber = pinnumber;
     haSwitch->setCurrentState(false);
     haSwitch->onCommand(staticOnStateSwitch);
     init();
@@ -224,15 +225,16 @@ class RemoteOutputPin : public Pin
 public:
   String remoteHost;
   int remotePort = 80;
-  int pinNumber = -1;
 
   // Implement getType() for RemoteOutputPin
   PinType getType() const override { return Pin::TYPE_REMOTE; }
 
   RemoteOutputPin(String host, int port, int pinnumber)
       : remoteHost(host),
-        remotePort(port),
-        pinNumber(pinnumber) {}
+        remotePort(port)
+  {
+    pinNumber = pinnumber;
+  }
 
   void on() override
   {
