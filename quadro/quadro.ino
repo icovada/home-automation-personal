@@ -9,12 +9,15 @@
 #include <ArduinoHA.h> // https://github.com/dawidchyrzynski/arduino-home-assistant/
 #include "eeprom_stuff.h"
 #include "pin_manager.h"
+#include "eastron.h"
 
-#define DEBUG_MODE 1
+#define DEBUG_MODE 0
 #define MANAGER_COUNT 2
 #define PIN_COUNT 3
 
 #include "rest_functions.h"
+
+ModbusClient modbus(Serial3, 1); // RS485 on Serial3, slave ID 1
 
 EthernetServer ethServer(80);
 EthernetClient ethMqttClient;
@@ -36,6 +39,11 @@ void setup()
   wdt_disable(); // Disable watchdog timer immediately
   Serial.begin(115200);
   Serial.println("Start");
+
+  // Initialize RS485 serial for Modbus
+  Serial3.begin(38400, SERIAL_8N2);  // 38400 baud, 8 data bits, no parity, 2 stop bits
+  Controllino_RS485Init(38400);      // Initialize RS485 transceiver
+  Controllino_RS485RxEnable();       // Start in receive mode
 
   Serial.println("Reading JSON from EEPROM...");
   String readJson = readJsonFromEEPROM();
@@ -117,6 +125,8 @@ void setup()
   manager[0] = new PinManager(CONTROLLINO_A0, true, "Test1", pins[0], pins[1]);
   manager[1] = new PinManager(CONTROLLINO_A1, true, "Test2", pins[2]);
 
+  configure_eastron_sensors();
+
   device.enableSharedAvailability();
   device.enableLastWill();
 
@@ -137,6 +147,10 @@ void setup()
   Serial.println("End");
 }
 
+// Modbus read state machine
+enum ModbusReadState { READ_PHASES, READ_TOTAL, READ_ENERGY, IDLE };
+ModbusReadState modbusState = READ_PHASES;
+
 void loop()
 {
   httpRestClient = ethServer.available();
@@ -148,8 +162,76 @@ void loop()
     mqtt.begin(mqtt_server.c_str());
   }
 
+  if (millis() > modbus.lastScan+2000){
+    // start reading
+    modbusState = READ_PHASES;
+    modbus.lastScan=millis();
+  }
+
+  // Non-blocking Modbus handling
+  if (modbus.isIdle()) {
+    // Start next read
+    switch(modbusState) {
+      case READ_PHASES:
+        modbus.startReadPhasePowers();
+        break;
+      case READ_TOTAL:
+        modbus.startReadTotalPower();
+        break;
+      case READ_ENERGY:
+        modbus.startReadEnergy();
+        break;
+      case IDLE:
+        break;
+    }
+  }
+  
   mqtt.loop();
 
+  for (int i = 0; i < MANAGER_COUNT; i++)
+  {
+    manager[i]->check();
+  }
+
+
+  // Check for Modbus response
+  int8_t result = modbus.process();
+  if (result == 1) {
+    // Successfully received response
+    switch(modbusState) {
+      case READ_PHASES:
+        modbus.getPhasePowers();
+        modbusState = READ_TOTAL;
+        break;
+      case READ_TOTAL:
+        modbus.getTotalPower();
+        modbusState = READ_ENERGY;
+        break;
+      case READ_ENERGY:
+        modbus.getEnergy();
+        modbusState = IDLE;
+        break;
+      case IDLE:
+        break;
+    }
+  } else if (result < 0) {
+    // Error occurred - reset to retry
+    #ifdef DEBUG_MODE
+    Serial.print("Modbus error in state ");
+    Serial.print(modbusState);
+    Serial.print(": ");
+    switch(result) {
+      case -1: Serial.println("Timeout"); break;
+      case -2: Serial.println("Invalid response"); break;
+      case -3: Serial.println("CRC error"); break;
+      default: Serial.println(result); break;
+    }
+    #endif
+    modbusState = IDLE; // Reset state machine on error
+  }
+
+  // check again
+  mqtt.loop();
   for (int i = 0; i < MANAGER_COUNT; i++)
   {
     manager[i]->check();
