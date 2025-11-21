@@ -9,9 +9,12 @@
 #include <ArduinoHA.h> // https://github.com/dawidchyrzynski/arduino-home-assistant/
 #include "eeprom_stuff.h"
 #include "pin_manager.h"
-#include "rest_functions.h"
 
-#define DEBUG_MODE 1
+#define DEBUG_MODE 0
+#define MANAGER_COUNT 2
+#define PIN_COUNT 3
+
+#include "rest_functions.h"
 
 EthernetServer ethServer(80);
 EthernetClient ethMqttClient;
@@ -24,9 +27,6 @@ String remoteHttpHost = "";
 aREST rest = aREST();
 
 // Global registry of PinManagers
-#define MANAGER_COUNT 2
-#define PIN_COUNT 3
-
 PinManager *manager[MANAGER_COUNT];
 static Pin *pins[PIN_COUNT];
 static int pinCount = 0;
