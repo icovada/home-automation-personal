@@ -1,9 +1,16 @@
 #include <ArduinoJson.h> // https://arduinojson.org/
 #include <avr/wdt.h>
+#include "pin_manager.h"
 
 #ifndef DEBUG_MODE
 #define DEBUG_MODE 0
 #endif
+
+#ifndef PIN_COUNT
+#define PIN_COUNT 0
+#endif
+
+extern Pin *pins[PIN_COUNT];
 
 // Forward declaration of function defined in quadro.ino
 void saveJsonToEEPROM(char *json, int startAddr = 0);
@@ -49,4 +56,17 @@ int replaceConfig(String data)
   Serial.println("Config valid, writing to EEPROM...");
   saveJsonToEEPROM((char *)data.c_str());
   return 0;
+}
+
+int togglePin(String command)
+{
+  int pin = command.toInt();
+
+  // look for the Pin instance with the pin we want
+  for (int i=0; i<PIN_COUNT; i++){
+    if (pins[i]->pinNumber == pin){
+      pins[i]->toggle();
+      return 1; //success
+    }
+  }
 }

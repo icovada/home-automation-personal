@@ -94,6 +94,7 @@ void setup()
   // Register custom functions
   rest.function("reset", resetController);
   rest.function("replace_config", replaceConfig);
+  rest.function("toggle", togglePin);
   ethServer.begin();
 
   // Declare HALights and HASwitches
