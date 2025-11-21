@@ -12,8 +12,8 @@
 #include "eastron.h"
 
 #define DEBUG_MODE 0
-#define MANAGER_COUNT 2
-#define PIN_COUNT 3
+#define MANAGER_COUNT 5
+#define PIN_COUNT 1
 
 #include "rest_functions.h"
 
@@ -24,8 +24,7 @@ EthernetClient ethMqttClient;
 EthernetClient httpRestClient;
 HADevice device("quadro");
 HAMqtt mqtt(ethMqttClient, device);
-String mqtt_server;
-String remoteHttpHost = "";
+char mqtt_server[16] = "";  // Max "xxx.xxx.xxx.xxx"
 
 aREST rest = aREST();
 
@@ -33,6 +32,13 @@ aREST rest = aREST();
 PinManager *manager[MANAGER_COUNT];
 static Pin *pins[PIN_COUNT];
 static int pinCount = 0;
+
+int freeRam()
+{
+  extern int __heap_start, *__brkval;
+  int v;
+  return (int)&v - (__brkval == 0 ? (int)&__heap_start : (int)__brkval);
+}
 
 void setup()
 {
@@ -83,12 +89,6 @@ void setup()
       // start the Ethernet connection and the server:
       Ethernet.begin(mac, ip, dns, gw, mask);
 
-      if (doc.containsKey("remote"))
-      {
-        remoteHttpHost = doc["remote"].as<String>();
-        Serial.println("Init remote http to " + remoteHttpHost);
-      }
-
       Serial.print("Local IP: ");
       Serial.println(Ethernet.localIP());
     }
@@ -106,11 +106,11 @@ void setup()
   ethServer.begin();
 
   // Declare HALights and HASwitches
-  HALight *light = new HALight("testlight");
-  light->setName("Test Light");
+  HALight *salotto = new HALight("salotto");
+  salotto->setName("Salotto");
 
-  HASwitch *haswitch = new HASwitch("switch1");
-  haswitch->setName("sw Test 1");
+  // HASwitch *haswitch = new HASwitch("switch1");
+  // haswitch->setName("sw Test 1");
 
   // Hand off "pins" to OutputPin class
   // this is a global value for the entire class
@@ -120,10 +120,9 @@ void setup()
   Serial.println("Restoring light states from EEPROM...");
   byte savedStates = restoreStateFromEEPROM();
 
-  pins[0] = new OutputPin(CONTROLLINO_D0, light);
-  pins[1] = new OutputPin(CONTROLLINO_D1, haswitch);
-  pins[2] = new RemoteOutputPin(remoteHttpHost, 80, 2);
-  pinCount = 3;
+  pins[0] = new OutputPin(CONTROLLINO_R0, salotto);
+  // pins[2] = new RemoteOutputPin(remoteHttpHost, 80, 2);
+  pinCount = 1;
 
   // Apply restored states to OutputPins (skip index 2 which is RemoteOutputPin)
   for (int i = 0; i < 2; i++)  // Only restore first 2 pins (OutputPins)
@@ -139,10 +138,21 @@ void setup()
   }
 
   // Initialize PinManagers before MQTT
-  manager[0] = new PinManager(CONTROLLINO_A0, true, "Test1", pins[0], pins[1]);
-  manager[1] = new PinManager(CONTROLLINO_A1, true, "Test2", pins[2]);
+  manager[0] = new PinManager(CONTROLLINO_A0, false, "cucinaled_down");
+  manager[1] = new PinManager(CONTROLLINO_A1, false, "cucinaled_up");
+  manager[2] = new PinManager(CONTROLLINO_A2, false, "salotto", pins[0]);
+  manager[3] = new PinManager(CONTROLLINO_A3, false, "uscita");
+  manager[4] = new PinManager(CONTROLLINO_A4, false, "cucina");
+  // manager[5] = new PinManager(CONTROLLINO_A5, false, "salotto_secondario");
+  // manager[6] = new PinManager(CONTROLLINO_IN1, false, "campanello");
+
+  Serial.print("Free RAM before: ");
+  Serial.println(freeRam());
 
   configure_eastron_sensors();
+
+  Serial.print("Free RAM after: ");
+  Serial.println(freeRam());
 
   device.enableSharedAvailability();
   device.enableLastWill();
@@ -150,8 +160,8 @@ void setup()
   // Validate MQTT config exists before initializing
   if (doc.containsKey("mqtt") && doc["mqtt"].is<const char *>())
   {
-    mqtt_server = doc["mqtt"].as<const char *>();
-    mqtt.begin(mqtt_server.c_str());
+    strlcpy(mqtt_server, doc["mqtt"].as<const char *>(), sizeof(mqtt_server));
+    mqtt.begin(mqtt_server);
     Serial.println("MQTT initialized");
   }
   else
@@ -174,9 +184,9 @@ void loop()
   rest.handle(httpRestClient);
 
   // Reconnect to MQTT if connection lost
-  if (!mqtt.isConnected() && mqtt_server.length() > 0)
+  if (!mqtt.isConnected() && mqtt_server[0] != '\0')
   {
-    mqtt.begin(mqtt_server.c_str());
+    mqtt.begin(mqtt_server);
   }
 
   if (millis() > modbus.lastScan+2000){
