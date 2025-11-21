@@ -87,6 +87,7 @@ private:
 
 public:
   bool pinStatus = false;
+  int pinNumber = -1;
   HALight *haLight;
   HASwitch *haSwitch;
 
@@ -223,6 +224,7 @@ class RemoteOutputPin : public Pin
 public:
   String remoteHost;
   int remotePort = 80;
+  int pinNumber = -1;
 
   // Implement getType() for RemoteOutputPin
   PinType getType() const override { return Pin::TYPE_REMOTE; }
@@ -230,7 +232,7 @@ public:
   RemoteOutputPin(String host, int port, int pinnumber)
       : remoteHost(host),
         remotePort(port),
-        pinnumber(pinnumber) {}
+        pinNumber(pinnumber) {}
 
   void on() override
   {
@@ -255,7 +257,7 @@ public:
     }
 
     // Construct the full path
-    String path = "/led?params=" + String(pinnumber) + ",2";
+    String path = "/led?params=" + String(pinNumber) + ",2";
 
     // Connect to the remote server with retry
     int retries = 0;
