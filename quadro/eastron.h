@@ -1,6 +1,10 @@
 #ifndef MODBUS_H
 #define MODBUS_H
 
+#ifndef DEBUG_MODE
+#define DEBUG_MODE 0
+#endif
+
 #include <ArduinoHA.h> // https://github.com/dawidchyrzynski/arduino-home-assistant/
 
 // Modbus configuration from modbus2.py
