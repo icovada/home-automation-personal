@@ -59,25 +59,25 @@ void configure_eastron_sensors(){
   import_watth->setUnitOfMeasurement("Wh");
   import_watth->setIcon("mdi:meter-electric");
   import_watth->setDeviceClass("energy");
-  import_watth->setStateClass("measurement");
+  import_watth->setStateClass("total");
 
   export_watth->setName("Wh out");
   export_watth->setUnitOfMeasurement("Wh");
   export_watth->setIcon("mdi:meter-electric-outline");
   export_watth->setDeviceClass("energy");
-  export_watth->setStateClass("measurement");
+  export_watth->setStateClass("total");
 
   import_varh->setName("Varh in");
   import_varh->setUnitOfMeasurement("Wh");
   import_varh->setIcon("mdi:meter-electric");
   import_varh->setDeviceClass("energy");
-  import_varh->setStateClass("measurement");
+  import_varh->setStateClass("total");
 
   export_varh->setName("Varh out");
   export_varh->setUnitOfMeasurement("Wh");
   export_varh->setIcon("mdi:meter-electric-outline");
   export_varh->setDeviceClass("energy");
-  export_varh->setStateClass("measurement");
+  export_varh->setStateClass("total");
 }
 
 // Modbus state machine states
