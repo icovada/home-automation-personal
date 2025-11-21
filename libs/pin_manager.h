@@ -346,39 +346,39 @@ public:
   HADeviceTrigger *longPressTrigger;
   Pin *pinShort;
   Pin *pinLong;
-  String _name;
-  String _triggerId;
+  char _triggerId[32];  // Fixed buffer instead of String
 
   PinManager()
       : shortPressTrigger(nullptr),
         longPressTrigger(nullptr),
         pinShort(nullptr),
-        pinLong(nullptr),
-        _name("") {}
+        pinLong(nullptr) {
+    _triggerId[0] = '\0';
+  }
 
-  PinManager(int inPin, bool isAnalog, String name)
+  PinManager(int inPin, bool isAnalog, const char* name)
       : PinManager(inPin, isAnalog, name, nullptr, nullptr) {}
 
-  PinManager(int inPin, bool isAnalog, String name, Pin *pinShort)
+  PinManager(int inPin, bool isAnalog, const char* name, Pin *pinShort)
       : PinManager(inPin, isAnalog, name, pinShort, nullptr) {}
 
-  PinManager(int inPin, bool isAnalog, String name, Pin *pinShort, Pin *pinLong)
+  PinManager(int inPin, bool isAnalog, const char* name, Pin *pinShort, Pin *pinLong)
       : inputPin(inPin),
         analog(isAnalog),
-        _name(name),
         shortPressTrigger(nullptr),
         longPressTrigger(nullptr),
         pinShort(pinShort),
         pinLong(pinLong)
   {
-
     pinMode(inputPin, INPUT);
 
-    // Pre-compute strings to ensure they persist
-    _triggerId = String(MQTT_NAME) + "_" + _name;
+    // Build trigger ID into fixed buffer
+    strlcpy(_triggerId, MQTT_NAME, sizeof(_triggerId));
+    strlcat(_triggerId, "_", sizeof(_triggerId));
+    strlcat(_triggerId, name, sizeof(_triggerId));
 
-    shortPressTrigger = new HADeviceTrigger(HADeviceTrigger::ButtonShortPressType, _triggerId.c_str());
-    longPressTrigger = new HADeviceTrigger(HADeviceTrigger::ButtonLongPressType, _triggerId.c_str());
+    shortPressTrigger = new HADeviceTrigger(HADeviceTrigger::ButtonShortPressType, _triggerId);
+    longPressTrigger = new HADeviceTrigger(HADeviceTrigger::ButtonLongPressType, _triggerId);
   }
 
   ~PinManager()
