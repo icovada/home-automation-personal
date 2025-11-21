@@ -12,7 +12,7 @@
 #include "eastron.h"
 
 #define DEBUG_MODE 0
-#define MANAGER_COUNT 5
+#define MANAGER_COUNT 7
 #define PIN_COUNT 1
 
 #include "rest_functions.h"
@@ -143,8 +143,8 @@ void setup()
   manager[2] = new PinManager(CONTROLLINO_A2, false, "salotto", pins[0]);
   manager[3] = new PinManager(CONTROLLINO_A3, false, "uscita");
   manager[4] = new PinManager(CONTROLLINO_A4, false, "cucina");
-  // manager[5] = new PinManager(CONTROLLINO_A5, false, "salotto_secondario");
-  // manager[6] = new PinManager(CONTROLLINO_IN1, false, "campanello");
+  manager[5] = new PinManager(CONTROLLINO_A5, false, "salotto_secondario");
+  manager[6] = new PinManager(CONTROLLINO_IN1, false, "campanello");
 
   Serial.print("Free RAM before: ");
   Serial.println(freeRam());
