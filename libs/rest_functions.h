@@ -1,5 +1,6 @@
 #include <ArduinoJson.h> // https://arduinojson.org/
 #include <avr/wdt.h>
+#include <Ethernet.h>
 #include "pin_manager.h"
 
 #ifndef DEBUG_MODE
@@ -15,68 +16,110 @@ extern Pin *pins[PIN_COUNT];
 // Forward declaration of function defined in quadro.ino
 void saveJsonToEEPROM(char *json, int startAddr = 0);
 
-int resetController(String command)
-{
-  wdt_enable(WDTO_15MS);
-  while (1)
-  {
-  }
-  return 1; // Never reached
-}
+// Minimal HTTP request handler - replaces aREST
+void handleHttpRequest(EthernetClient &client) {
+  if (!client) return;
 
-int replaceConfig(String data)
-{
-  JsonDocument jsonConfig;
+  char requestLine[256];
+  int idx = 0;
+  bool lineComplete = false;
+  unsigned long timeout = millis() + 100;
 
-  if (DEBUG_MODE)
-  {
-    Serial.println("Parsing incoming JSON");
-    Serial.println(data);
-  }
-
-  // Replace URL-encoded spaces with actual spaces
-  data.replace("+", " ");
-  data.replace("%20", " ");
-  data.replace("%22", "\"");
-
-  if (DEBUG_MODE)
-  {
-    Serial.println("URL-decoded data:");
-    Serial.println(data);
-  }
-
-  StaticJsonDocument<256> doc;
-  DeserializationError error = deserializeJson(doc, data);
-  if (error)
-  {
-    Serial.println("New config not valid");
-    Serial.println(error.c_str());
-    return 1;
-  }
-  Serial.println("Config valid, writing to EEPROM...");
-  saveJsonToEEPROM((char *)data.c_str());
-  return 0;
-}
-
-int togglePin(String command)
-{
-  int pin = command.toInt();
-  if (DEBUG_MODE)
-    Serial.println(command);
-
-  // look for the Pin instance with the pin we want
-  for (int i = 0; i < PIN_COUNT; i++)
-  {
-    Serial.print("Searching pin, looking ");
-    Serial.println(pins[i]->pinNumber);
-    if (pins[i]->pinNumber == pin)
-    {
-      if (DEBUG_MODE)
-        Serial.println("Pin found!");
-      pins[i]->toggle();
-      return 1; // success
+  // Read first line of HTTP request
+  while (client.connected() && millis() < timeout && !lineComplete) {
+    if (client.available()) {
+      char c = client.read();
+      if (c == '\n') {
+        lineComplete = true;
+      } else if (c != '\r' && idx < sizeof(requestLine) - 1) {
+        requestLine[idx++] = c;
+      }
     }
   }
-  if (DEBUG_MODE)
-    Serial.println("Done");
+  requestLine[idx] = '\0';
+
+  // Drain remaining request data
+  while (client.available()) client.read();
+
+  if (!lineComplete) {
+    client.stop();
+    return;
+  }
+
+  // Parse: "GET /endpoint?params=value HTTP/1.1"
+  char* path = strchr(requestLine, ' ');
+  if (!path) { client.stop(); return; }
+  path++; // skip space
+
+  char* httpVer = strchr(path, ' ');
+  if (httpVer) *httpVer = '\0'; // terminate path
+
+  // Extract params after ?params=
+  char* params = strstr(path, "?params=");
+  if (params) {
+    *params = '\0';  // terminate path
+    params += 8;     // skip "?params="
+  }
+
+  // Route requests
+  const char* response = "OK";
+
+  if (strcmp(path, "/reset") == 0) {
+    // Send response before reset
+    client.println(F("HTTP/1.1 200 OK"));
+    client.println(F("Content-Type: text/plain"));
+    client.println(F("Connection: close"));
+    client.println();
+    client.println(F("Resetting..."));
+    client.stop();
+    delay(100);
+    wdt_enable(WDTO_15MS);
+    while (1) {}
+  }
+  else if (strcmp(path, "/toggle") == 0 && params) {
+    int pin = atoi(params);
+    bool found = false;
+    for (int i = 0; i < PIN_COUNT; i++) {
+      if (pins[i] && pins[i]->pinNumber == pin) {
+        pins[i]->toggle();
+        found = true;
+        break;
+      }
+    }
+    response = found ? "Toggled" : "Pin not found";
+  }
+  else if (strcmp(path, "/replace_config") == 0 && params) {
+    // URL decode in place
+    char* src = params;
+    char* dst = params;
+    while (*src) {
+      if (*src == '+') { *dst++ = ' '; src++; }
+      else if (*src == '%' && src[1] && src[2]) {
+        char hex[3] = {src[1], src[2], 0};
+        *dst++ = (char)strtol(hex, NULL, 16);
+        src += 3;
+      }
+      else { *dst++ = *src++; }
+    }
+    *dst = '\0';
+
+    StaticJsonDocument<256> doc;
+    if (deserializeJson(doc, params)) {
+      response = "Invalid JSON";
+    } else {
+      saveJsonToEEPROM(params);
+      response = "Config saved";
+    }
+  }
+  else {
+    response = "Unknown endpoint";
+  }
+
+  // Send response
+  client.println(F("HTTP/1.1 200 OK"));
+  client.println(F("Content-Type: text/plain"));
+  client.println(F("Connection: close"));
+  client.println();
+  client.println(response);
+  client.stop();
 }

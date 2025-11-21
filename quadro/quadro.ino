@@ -3,7 +3,6 @@
 
 #include <Controllino.h>
 #include <Ethernet.h>
-#include <aREST.h>
 #include <ArduinoJson.h> // https://arduinojson.org/
 #include <avr/wdt.h>
 #include <ArduinoHA.h> // https://github.com/dawidchyrzynski/arduino-home-assistant/
@@ -21,12 +20,9 @@ ModbusClient modbus(Serial3, 1); // RS485 on Serial3, slave ID 1
 
 EthernetServer ethServer(80);
 EthernetClient ethMqttClient;
-EthernetClient httpRestClient;
 HADevice device("quadro");
 HAMqtt mqtt(ethMqttClient, device);
 char mqtt_server[16] = "";  // Max "xxx.xxx.xxx.xxx"
-
-aREST rest = aREST();
 
 // Global registry of PinManagers
 PinManager *manager[MANAGER_COUNT];
@@ -95,14 +91,6 @@ void setup()
   }
 
   device.setName(MQTT_HUMAN_NAME);
-
-  rest.set_id("1");
-  rest.set_name("quadro");
-
-  // Register custom functions
-  rest.function("reset", resetController);
-  rest.function("replace_config", replaceConfig);
-  rest.function("toggle", togglePin);
   ethServer.begin();
 
   // Declare HALights and HASwitches
@@ -180,8 +168,8 @@ ModbusReadState modbusState = READ_PHASES;
 
 void loop()
 {
-  httpRestClient = ethServer.available();
-  rest.handle(httpRestClient);
+  EthernetClient client = ethServer.available();
+  handleHttpRequest(client);
 
   // Reconnect to MQTT if connection lost
   if (!mqtt.isConnected() && mqtt_server[0] != '\0')
