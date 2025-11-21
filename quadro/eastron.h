@@ -26,10 +26,6 @@ void configure_eastron_sensors(){
   total_watts = new HASensorNumber("total_watts", HASensorNumber::PrecisionP0);
 
   import_watth = new HASensorNumber("import_watth", HASensorNumber::PrecisionP0);
-  export_watth = new HASensorNumber("export_watth", HASensorNumber::PrecisionP0);
-  import_varh = new HASensorNumber("import_varh", HASensorNumber::PrecisionP0);
-  export_varh = new HASensorNumber("export_varh", HASensorNumber::PrecisionP0);
-
 
   phase1_watts->setName("Fase 1");
   phase1_watts->setUnitOfMeasurement("W");
@@ -60,24 +56,6 @@ void configure_eastron_sensors(){
   import_watth->setIcon("mdi:meter-electric");
   import_watth->setDeviceClass("energy");
   import_watth->setStateClass("total");
-
-  export_watth->setName("Wh out");
-  export_watth->setUnitOfMeasurement("Wh");
-  export_watth->setIcon("mdi:meter-electric-outline");
-  export_watth->setDeviceClass("energy");
-  export_watth->setStateClass("total");
-
-  import_varh->setName("Varh in");
-  import_varh->setUnitOfMeasurement("Wh");
-  import_varh->setIcon("mdi:meter-electric");
-  import_varh->setDeviceClass("energy");
-  import_varh->setStateClass("total");
-
-  export_varh->setName("Varh out");
-  export_varh->setUnitOfMeasurement("Wh");
-  export_varh->setIcon("mdi:meter-electric-outline");
-  export_varh->setDeviceClass("energy");
-  export_varh->setStateClass("total");
 }
 
 // Modbus state machine states
@@ -341,9 +319,6 @@ public:
     if (state != MODBUS_PROCESSING || requestCount != 8) return false;
 
     import_watth->setValue(readFloat32(getRegister(0), getRegister(1)) * 1000);
-    export_watth->setValue(readFloat32(getRegister(2), getRegister(3)) * 1000);
-    import_varh->setValue(readFloat32(getRegister(4), getRegister(5)) * 1000);
-    export_varh->setValue(readFloat32(getRegister(6), getRegister(7)) * 1000);
 
     state = MODBUS_IDLE;
     return true;
