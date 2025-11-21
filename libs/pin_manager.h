@@ -257,7 +257,7 @@ public:
     }
 
     // Construct the full path
-    String path = "/led?params=" + String(pinNumber) + ",2";
+    String path = "/toggle?params=" + String(pinNumber);
 
     // Connect to the remote server with retry
     int retries = 0;
