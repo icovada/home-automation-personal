@@ -30,7 +30,11 @@ class Pin
   // Abstract Base Class for OutputPin and RemoteOutputPin
 public:
   int pinNumber = -1;
-  enum PinType { TYPE_OUTPUT, TYPE_REMOTE };
+  enum PinType
+  {
+    TYPE_OUTPUT,
+    TYPE_REMOTE
+  };
   virtual PinType getType() const = 0; // Pure virtual - subclasses must implement
 
   virtual void on() {}
@@ -111,7 +115,7 @@ public:
       if (globalPins[i] && globalPins[i]->getType() == Pin::TYPE_OUTPUT)
       {
         OutputPin *outPin = static_cast<OutputPin *>(globalPins[i]);
-        if (outPin->pinStatus && i < 8)  // Only support up to 8 pins in one byte
+        if (outPin->pinStatus && i < 8) // Only support up to 8 pins in one byte
         {
           stateData |= (1 << i);
         }
@@ -233,7 +237,7 @@ public:
     }
     digitalWrite(pinNumber, HIGH);
     pinStatus = true;
-    saveAllPinStates();  // Save state to EEPROM
+    saveAllPinStates(); // Save state to EEPROM
   }
 
   void off() override
@@ -248,7 +252,7 @@ public:
     }
     digitalWrite(pinNumber, LOW);
     pinStatus = false;
-    saveAllPinStates();  // Save state to EEPROM
+    saveAllPinStates(); // Save state to EEPROM
   }
 
   void toggle() override
@@ -346,23 +350,24 @@ public:
   HADeviceTrigger *longPressTrigger;
   Pin *pinShort;
   Pin *pinLong;
-  char _triggerId[32];  // Fixed buffer instead of String
+  char _triggerId[32]; // Fixed buffer instead of String
 
   PinManager()
       : shortPressTrigger(nullptr),
         longPressTrigger(nullptr),
         pinShort(nullptr),
-        pinLong(nullptr) {
+        pinLong(nullptr)
+  {
     _triggerId[0] = '\0';
   }
 
-  PinManager(int inPin, bool isAnalog, const char* name)
+  PinManager(int inPin, bool isAnalog, const char *name)
       : PinManager(inPin, isAnalog, name, nullptr, nullptr) {}
 
-  PinManager(int inPin, bool isAnalog, const char* name, Pin *pinShort)
+  PinManager(int inPin, bool isAnalog, const char *name, Pin *pinShort)
       : PinManager(inPin, isAnalog, name, pinShort, nullptr) {}
 
-  PinManager(int inPin, bool isAnalog, const char* name, Pin *pinShort, Pin *pinLong)
+  PinManager(int inPin, bool isAnalog, const char *name, Pin *pinShort, Pin *pinLong)
       : inputPin(inPin),
         analog(isAnalog),
         shortPressTrigger(nullptr),

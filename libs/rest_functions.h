@@ -17,8 +17,10 @@ extern Pin *pins[PIN_COUNT];
 void saveJsonToEEPROM(char *json, int startAddr = 0);
 
 // Minimal HTTP request handler - replaces aREST
-void handleHttpRequest(EthernetClient &client) {
-  if (!client) return;
+void handleHttpRequest(EthernetClient &client)
+{
+  if (!client)
+    return;
 
   char requestLine[256];
   int idx = 0;
@@ -26,12 +28,17 @@ void handleHttpRequest(EthernetClient &client) {
   unsigned long timeout = millis() + 100;
 
   // Read first line of HTTP request
-  while (client.connected() && millis() < timeout && !lineComplete) {
-    if (client.available()) {
+  while (client.connected() && millis() < timeout && !lineComplete)
+  {
+    if (client.available())
+    {
       char c = client.read();
-      if (c == '\n') {
+      if (c == '\n')
+      {
         lineComplete = true;
-      } else if (c != '\r' && idx < sizeof(requestLine) - 1) {
+      }
+      else if (c != '\r' && idx < sizeof(requestLine) - 1)
+      {
         requestLine[idx++] = c;
       }
     }
@@ -39,32 +46,41 @@ void handleHttpRequest(EthernetClient &client) {
   requestLine[idx] = '\0';
 
   // Drain remaining request data
-  while (client.available()) client.read();
+  while (client.available())
+    client.read();
 
-  if (!lineComplete) {
+  if (!lineComplete)
+  {
     client.stop();
     return;
   }
 
   // Parse: "GET /endpoint?params=value HTTP/1.1"
-  char* path = strchr(requestLine, ' ');
-  if (!path) { client.stop(); return; }
+  char *path = strchr(requestLine, ' ');
+  if (!path)
+  {
+    client.stop();
+    return;
+  }
   path++; // skip space
 
-  char* httpVer = strchr(path, ' ');
-  if (httpVer) *httpVer = '\0'; // terminate path
+  char *httpVer = strchr(path, ' ');
+  if (httpVer)
+    *httpVer = '\0'; // terminate path
 
   // Extract params after ?params=
-  char* params = strstr(path, "?params=");
-  if (params) {
-    *params = '\0';  // terminate path
-    params += 8;     // skip "?params="
+  char *params = strstr(path, "?params=");
+  if (params)
+  {
+    *params = '\0'; // terminate path
+    params += 8;    // skip "?params="
   }
 
   // Route requests
-  const char* response = "OK";
+  const char *response = "OK";
 
-  if (strcmp(path, "/reset") == 0) {
+  if (strcmp(path, "/reset") == 0)
+  {
     // Send response before reset
     client.println(F("HTTP/1.1 200 OK"));
     client.println(F("Content-Type: text/plain"));
@@ -74,13 +90,18 @@ void handleHttpRequest(EthernetClient &client) {
     client.stop();
     delay(100);
     wdt_enable(WDTO_15MS);
-    while (1) {}
+    while (1)
+    {
+    }
   }
-  else if (strcmp(path, "/toggle") == 0 && params) {
+  else if (strcmp(path, "/toggle") == 0 && params)
+  {
     int pin = atoi(params);
     bool found = false;
-    for (int i = 0; i < PIN_COUNT; i++) {
-      if (pins[i] && pins[i]->pinNumber == pin) {
+    for (int i = 0; i < PIN_COUNT; i++)
+    {
+      if (pins[i] && pins[i]->pinNumber == pin)
+      {
         pins[i]->toggle();
         found = true;
         break;
@@ -88,30 +109,44 @@ void handleHttpRequest(EthernetClient &client) {
     }
     response = found ? "Toggled" : "Pin not found";
   }
-  else if (strcmp(path, "/replace_config") == 0 && params) {
+  else if (strcmp(path, "/replace_config") == 0 && params)
+  {
     // URL decode in place
-    char* src = params;
-    char* dst = params;
-    while (*src) {
-      if (*src == '+') { *dst++ = ' '; src++; }
-      else if (*src == '%' && src[1] && src[2]) {
+    char *src = params;
+    char *dst = params;
+    while (*src)
+    {
+      if (*src == '+')
+      {
+        *dst++ = ' ';
+        src++;
+      }
+      else if (*src == '%' && src[1] && src[2])
+      {
         char hex[3] = {src[1], src[2], 0};
         *dst++ = (char)strtol(hex, NULL, 16);
         src += 3;
       }
-      else { *dst++ = *src++; }
+      else
+      {
+        *dst++ = *src++;
+      }
     }
     *dst = '\0';
 
     StaticJsonDocument<256> doc;
-    if (deserializeJson(doc, params)) {
+    if (deserializeJson(doc, params))
+    {
       response = "Invalid JSON";
-    } else {
+    }
+    else
+    {
       saveJsonToEEPROM(params);
       response = "Config saved";
     }
   }
-  else {
+  else
+  {
     response = "Unknown endpoint";
   }
 

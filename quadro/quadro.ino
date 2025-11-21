@@ -22,7 +22,7 @@ EthernetServer ethServer(80);
 EthernetClient ethMqttClient;
 HADevice device("quadro");
 HAMqtt mqtt(ethMqttClient, device);
-char mqtt_server[16] = "";  // Max "xxx.xxx.xxx.xxx"
+char mqtt_server[16] = ""; // Max "xxx.xxx.xxx.xxx"
 
 // Global registry of PinManagers
 PinManager *manager[MANAGER_COUNT];
@@ -43,9 +43,9 @@ void setup()
   Serial.println("Start");
 
   // Initialize RS485 serial for Modbus
-  Serial3.begin(38400, SERIAL_8N2);  // 38400 baud, 8 data bits, no parity, 2 stop bits
-  Controllino_RS485Init(38400);      // Initialize RS485 transceiver
-  Controllino_RS485RxEnable();       // Start in receive mode
+  Serial3.begin(38400, SERIAL_8N2); // 38400 baud, 8 data bits, no parity, 2 stop bits
+  Controllino_RS485Init(38400);     // Initialize RS485 transceiver
+  Controllino_RS485RxEnable();      // Start in receive mode
 
   Serial.println("Reading JSON from EEPROM...");
   String readJson = readJsonFromEEPROM();
@@ -113,7 +113,7 @@ void setup()
   pinCount = 1;
 
   // Apply restored states to OutputPins (skip index 2 which is RemoteOutputPin)
-  for (int i = 0; i < 2; i++)  // Only restore first 2 pins (OutputPins)
+  for (int i = 0; i < 2; i++) // Only restore first 2 pins (OutputPins)
   {
     bool shouldBeOn = (savedStates & (1 << i)) != 0;
     if (shouldBeOn && pins[i])
@@ -163,7 +163,13 @@ void setup()
 }
 
 // Modbus read state machine
-enum ModbusReadState { READ_PHASES, READ_TOTAL, READ_ENERGY, IDLE };
+enum ModbusReadState
+{
+  READ_PHASES,
+  READ_TOTAL,
+  READ_ENERGY,
+  IDLE
+};
 ModbusReadState modbusState = READ_PHASES;
 
 void loop()
@@ -177,30 +183,33 @@ void loop()
     mqtt.begin(mqtt_server);
   }
 
-  if (millis() > modbus.lastScan+2000){
+  if (millis() > modbus.lastScan + 2000)
+  {
     // start reading
     modbusState = READ_PHASES;
-    modbus.lastScan=millis();
+    modbus.lastScan = millis();
   }
 
   // Non-blocking Modbus handling
-  if (modbus.isIdle()) {
+  if (modbus.isIdle())
+  {
     // Start next read
-    switch(modbusState) {
-      case READ_PHASES:
-        modbus.startReadPhasePowers();
-        break;
-      case READ_TOTAL:
-        modbus.startReadTotalPower();
-        break;
-      case READ_ENERGY:
-        modbus.startReadEnergy();
-        break;
-      case IDLE:
-        break;
+    switch (modbusState)
+    {
+    case READ_PHASES:
+      modbus.startReadPhasePowers();
+      break;
+    case READ_TOTAL:
+      modbus.startReadTotalPower();
+      break;
+    case READ_ENERGY:
+      modbus.startReadEnergy();
+      break;
+    case IDLE:
+      break;
     }
   }
-  
+
   mqtt.loop();
 
   for (int i = 0; i < MANAGER_COUNT; i++)
@@ -208,38 +217,51 @@ void loop()
     manager[i]->check();
   }
 
-
   // Check for Modbus response
   int8_t result = modbus.process();
-  if (result == 1) {
+  if (result == 1)
+  {
     // Successfully received response
-    switch(modbusState) {
-      case READ_PHASES:
-        modbus.getPhasePowers();
-        modbusState = READ_TOTAL;
-        break;
-      case READ_TOTAL:
-        modbus.getTotalPower();
-        modbusState = READ_ENERGY;
-        break;
-      case READ_ENERGY:
-        modbus.getEnergy();
-        modbusState = IDLE;
-        break;
-      case IDLE:
-        break;
+    switch (modbusState)
+    {
+    case READ_PHASES:
+      modbus.getPhasePowers();
+      modbusState = READ_TOTAL;
+      break;
+    case READ_TOTAL:
+      modbus.getTotalPower();
+      modbusState = READ_ENERGY;
+      break;
+    case READ_ENERGY:
+      modbus.getEnergy();
+      modbusState = IDLE;
+      break;
+    case IDLE:
+      break;
     }
-  } else if (result < 0) {
+  }
+  else if (result < 0)
+  {
     // Error occurred - reset to retry
-    if (DEBUG_MODE) {
+    if (DEBUG_MODE)
+    {
       Serial.print("Modbus error in state ");
       Serial.print(modbusState);
       Serial.print(": ");
-      switch(result) {
-        case -1: Serial.println("Timeout"); break;
-        case -2: Serial.println("Invalid response"); break;
-        case -3: Serial.println("CRC error"); break;
-        default: Serial.println(result); break;
+      switch (result)
+      {
+      case -1:
+        Serial.println("Timeout");
+        break;
+      case -2:
+        Serial.println("Invalid response");
+        break;
+      case -3:
+        Serial.println("CRC error");
+        break;
+      default:
+        Serial.println(result);
+        break;
       }
     }
     modbusState = IDLE; // Reset state machine on error
