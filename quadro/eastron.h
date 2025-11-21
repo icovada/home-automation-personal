@@ -13,49 +13,54 @@ static HASensorNumber *phase1_watts;
 static HASensorNumber *phase2_watts;
 static HASensorNumber *phase3_watts;
 static HASensorNumber *total_watts;
-
 static HASensorNumber *import_watth;
-static HASensorNumber *export_watth;
-static HASensorNumber *import_varh;
-static HASensorNumber *export_varh;
+
+// Shared strings to avoid RAM duplication
+static const char STR_W[] = "W";
+static const char STR_WH[] = "Wh";
+static const char STR_POWER[] = "power";
+static const char STR_ENERGY[] = "energy";
+static const char STR_MEASUREMENT[] = "measurement";
+static const char STR_TOTAL[] = "total";
+static const char STR_ICON_FLASH[] = "mdi:flash";
+static const char STR_ICON_METER[] = "mdi:meter-electric";
 
 void configure_eastron_sensors(){
   phase1_watts = new HASensorNumber("phase1_watts", HASensorNumber::PrecisionP0);
   phase2_watts = new HASensorNumber("phase2_watts", HASensorNumber::PrecisionP0);
   phase3_watts = new HASensorNumber("phase3_watts", HASensorNumber::PrecisionP0);
   total_watts = new HASensorNumber("total_watts", HASensorNumber::PrecisionP0);
-
   import_watth = new HASensorNumber("import_watth", HASensorNumber::PrecisionP0);
 
   phase1_watts->setName("Fase 1");
-  phase1_watts->setUnitOfMeasurement("W");
-  phase1_watts->setIcon("mdi:flash");
-  phase1_watts->setDeviceClass("power");
-  phase1_watts->setStateClass("measurement");
+  phase1_watts->setUnitOfMeasurement(STR_W);
+  phase1_watts->setIcon(STR_ICON_FLASH);
+  phase1_watts->setDeviceClass(STR_POWER);
+  phase1_watts->setStateClass(STR_MEASUREMENT);
 
   phase2_watts->setName("Fase 2");
-  phase2_watts->setUnitOfMeasurement("W");
-  phase2_watts->setIcon("mdi:flash");
-  phase2_watts->setDeviceClass("power");
-  phase2_watts->setStateClass("measurement");
+  phase2_watts->setUnitOfMeasurement(STR_W);
+  phase2_watts->setIcon(STR_ICON_FLASH);
+  phase2_watts->setDeviceClass(STR_POWER);
+  phase2_watts->setStateClass(STR_MEASUREMENT);
 
   phase3_watts->setName("Fase 3");
-  phase3_watts->setUnitOfMeasurement("W");
-  phase3_watts->setIcon("mdi:flash");
-  phase3_watts->setDeviceClass("power");
-  phase3_watts->setStateClass("measurement");
+  phase3_watts->setUnitOfMeasurement(STR_W);
+  phase3_watts->setIcon(STR_ICON_FLASH);
+  phase3_watts->setDeviceClass(STR_POWER);
+  phase3_watts->setStateClass(STR_MEASUREMENT);
 
   total_watts->setName("Totale");
-  total_watts->setUnitOfMeasurement("W");
-  total_watts->setIcon("mdi:flash");
-  total_watts->setDeviceClass("power");
-  total_watts->setStateClass("measurement");
+  total_watts->setUnitOfMeasurement(STR_W);
+  total_watts->setIcon(STR_ICON_FLASH);
+  total_watts->setDeviceClass(STR_POWER);
+  total_watts->setStateClass(STR_MEASUREMENT);
 
   import_watth->setName("Wh in");
-  import_watth->setUnitOfMeasurement("Wh");
-  import_watth->setIcon("mdi:meter-electric");
-  import_watth->setDeviceClass("energy");
-  import_watth->setStateClass("total");
+  import_watth->setUnitOfMeasurement(STR_WH);
+  import_watth->setIcon(STR_ICON_METER);
+  import_watth->setDeviceClass(STR_ENERGY);
+  import_watth->setStateClass(STR_TOTAL);
 }
 
 // Modbus state machine states
