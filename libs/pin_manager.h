@@ -28,6 +28,7 @@ class Pin
 {
   // Abstract Base Class for OutputPin and RemoteOutputPin
 public:
+  int pinNumber = -1;
   enum PinType { TYPE_OUTPUT, TYPE_REMOTE };
   virtual PinType getType() const = 0; // Pure virtual - subclasses must implement
 
@@ -85,7 +86,6 @@ private:
   }
 
 public:
-  int pinNumber = -1;
   bool pinStatus = false;
   HALight *haLight;
   HASwitch *haSwitch;
@@ -223,7 +223,6 @@ class RemoteOutputPin : public Pin
 public:
   String remoteHost;
   int remotePort = 80;
-  int pinnumber = -1;
 
   // Implement getType() for RemoteOutputPin
   PinType getType() const override { return Pin::TYPE_REMOTE; }
