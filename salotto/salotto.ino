@@ -1,5 +1,5 @@
-#define MQTT_NAME "controllino_quadro"
-#define MQTT_HUMAN_NAME "Controllino Quadro"
+#define MQTT_NAME "controllino_salotto"
+#define MQTT_HUMAN_NAME "Controllino Salotto"
 
 #include <Controllino.h>
 #include <Ethernet.h>
@@ -8,19 +8,16 @@
 #include <ArduinoHA.h> // https://github.com/dawidchyrzynski/arduino-home-assistant/
 #include "eeprom_stuff.h"
 #include "pin_manager.h"
-#include "eastron.h"
 
-#define DEBUG_MODE 0
-#define MANAGER_COUNT 7
-#define PIN_COUNT 1
+#define DEBUG_MODE 1
+#define MANAGER_COUNT 3
+#define PIN_COUNT 3
 
 #include "rest_functions.h"
 
-ModbusClient modbus(Serial3, 1); // RS485 on Serial3, slave ID 1
-
 EthernetServer ethServer(80);
 EthernetClient ethMqttClient;
-HADevice device("quadro");
+HADevice device("salotto");
 HAMqtt mqtt(ethMqttClient, device);
 char mqtt_server[16] = ""; // Max "xxx.xxx.xxx.xxx"
 
@@ -94,11 +91,23 @@ void setup()
   ethServer.begin();
 
   // Declare HALights and HASwitches
-  HALight *salotto = new HALight("salotto");
-  salotto->setName("Salotto");
+  HALight *cucina = new HALight("cucina");
+  cucina->setName("Cucina");
 
-  // HASwitch *haswitch = new HASwitch("switch1");
-  // haswitch->setName("sw Test 1");
+  HALight *camera = new HALight("camera");
+  camera->setName("Camera");
+
+  HALight *sgabuzzino = new HALight("sgabuzzino");
+  sgabuzzino->setName("Sgabuzzino");
+
+  HALight *studio = new HALight("studio");
+  studio->setName("Studio");
+
+  HALight *disimpegno = new HALight("disimpegno");
+  disimpegno->setName("Disimpegno");
+
+  HASwitch *ventola = new HASwitch("ventola");
+  ventola->setName("Ventola");
 
   // Hand off "pins" to OutputPin class
   // this is a global value for the entire class
@@ -108,9 +117,15 @@ void setup()
   Serial.println("Restoring light states from EEPROM...");
   byte savedStates = restoreStateFromEEPROM();
 
-  pins[0] = new OutputPin(CONTROLLINO_R0, salotto);
+  pins[0] = new OutputPin(CONTROLLINO_R0, cucina);
+  pins[1] = new OutputPin(CONTROLLINO_R1, sgabuzzino);
+  pins[2] = new OutputPin(CONTROLLINO_R2, studio);
+  pins[3] = new OutputPin(CONTROLLINO_R3, disimpegno);
+  pins[4] = new OutputPin(CONTROLLINO_R4, ventola);
+  pins[5] = new OutputPin(CONTROLLINO_R6, camera);
+
   // pins[2] = new RemoteOutputPin(remoteHttpHost, 80, 2);
-  pinCount = 1;
+  pinCount = 6;
 
   // Apply restored states to OutputPins (skip index 2 which is RemoteOutputPin)
   for (int i = 0; i < 2; i++) // Only restore first 2 pins (OutputPins)
@@ -126,21 +141,9 @@ void setup()
   }
 
   // Initialize PinManagers before MQTT
-  manager[0] = new PinManager(CONTROLLINO_A0, false, "cucinaled_down");
-  manager[1] = new PinManager(CONTROLLINO_A1, false, "cucinaled_up");
-  manager[2] = new PinManager(CONTROLLINO_A2, false, "salotto", pins[0]);
-  manager[3] = new PinManager(CONTROLLINO_A3, false, "uscita");
-  manager[4] = new PinManager(CONTROLLINO_A4, false, "cucina");
-  manager[5] = new PinManager(CONTROLLINO_A5, false, "salotto_secondario");
-  manager[6] = new PinManager(CONTROLLINO_IN1, false, "campanello");
-
-  Serial.print("Free RAM before: ");
-  Serial.println(freeRam());
-
-  configure_eastron_sensors();
-
-  Serial.print("Free RAM after: ");
-  Serial.println(freeRam());
+  manager[0] = new PinManager(CONTROLLINO_A0, false, "S0");
+  manager[1] = new PinManager(CONTROLLINO_A1, false, "S1");
+  manager[2] = new PinManager(CONTROLLINO_A2, false, "S2");
 
   device.enableSharedAvailability();
   device.enableLastWill();
@@ -162,16 +165,6 @@ void setup()
   Serial.println("End");
 }
 
-// Modbus read state machine
-enum ModbusReadState
-{
-  READ_PHASES,
-  READ_TOTAL,
-  READ_ENERGY,
-  IDLE
-};
-ModbusReadState modbusState = READ_PHASES;
-
 void loop()
 {
   EthernetClient client = ethServer.available();
@@ -183,92 +176,8 @@ void loop()
     mqtt.begin(mqtt_server);
   }
 
-  if (millis() > modbus.lastScan + 2000)
-  {
-    // start reading
-    modbusState = READ_PHASES;
-    modbus.lastScan = millis();
-  }
-
-  // Non-blocking Modbus handling
-  if (modbus.isIdle())
-  {
-    // Start next read
-    switch (modbusState)
-    {
-    case READ_PHASES:
-      modbus.startReadPhasePowers();
-      break;
-    case READ_TOTAL:
-      modbus.startReadTotalPower();
-      break;
-    case READ_ENERGY:
-      modbus.startReadEnergy();
-      break;
-    case IDLE:
-      break;
-    }
-  }
-
   mqtt.loop();
 
-  for (int i = 0; i < MANAGER_COUNT; i++)
-  {
-    manager[i]->check();
-  }
-
-  // Check for Modbus response
-  int8_t result = modbus.process();
-  if (result == 1)
-  {
-    // Successfully received response
-    switch (modbusState)
-    {
-    case READ_PHASES:
-      modbus.getPhasePowers();
-      modbusState = READ_TOTAL;
-      break;
-    case READ_TOTAL:
-      modbus.getTotalPower();
-      modbusState = READ_ENERGY;
-      break;
-    case READ_ENERGY:
-      modbus.getEnergy();
-      modbusState = IDLE;
-      break;
-    case IDLE:
-      break;
-    }
-  }
-  else if (result < 0)
-  {
-    // Error occurred - reset to retry
-    if (DEBUG_MODE)
-    {
-      Serial.print("Modbus error in state ");
-      Serial.print(modbusState);
-      Serial.print(": ");
-      switch (result)
-      {
-      case -1:
-        Serial.println("Timeout");
-        break;
-      case -2:
-        Serial.println("Invalid response");
-        break;
-      case -3:
-        Serial.println("CRC error");
-        break;
-      default:
-        Serial.println(result);
-        break;
-      }
-    }
-    modbusState = IDLE; // Reset state machine on error
-  }
-
-  // check again
-  mqtt.loop();
   for (int i = 0; i < MANAGER_COUNT; i++)
   {
     manager[i]->check();
