@@ -28,6 +28,7 @@ char mqtt_server[16] = ""; // Max "xxx.xxx.xxx.xxx"
 PinManager *manager[MANAGER_COUNT];
 static Pin *pins[PIN_COUNT];
 static int pinCount = 0;
+char remoteHttpHost;
 
 int freeRam()
 {
@@ -67,7 +68,8 @@ void setup()
     // Validate required JSON fields exist
     if (!doc.containsKey("net") || !doc["net"].containsKey("mac") ||
         !doc["net"].containsKey("ip") || !doc["net"].containsKey("mask") ||
-        !doc["net"].containsKey("gw") || !doc["net"].containsKey("dns"))
+        !doc["net"].containsKey("gw") || !doc["net"].containsKey("dns") ||
+        !doc.containsKey("remote"))
     {
       Serial.println("ERROR: JSON missing required network fields, falling back to DHCP");
       byte mac[] = {0xAE, 0xAD, 0xBE, 0xEF, 0xFE, 0xFF};
@@ -81,6 +83,7 @@ void setup()
       IPAddress mask = parseIPAddress(doc["net"]["mask"]);
       IPAddress gw = parseIPAddress(doc["net"]["gw"]);
       IPAddress dns = parseIPAddress(doc["net"]["dns"]);
+      remoteHttpHost = doc["remote"];
 
       // start the Ethernet connection and the server:
       Ethernet.begin(mac, ip, dns, gw, mask);
@@ -109,7 +112,7 @@ void setup()
   byte savedStates = restoreStateFromEEPROM();
 
   pins[0] = new OutputPin(CONTROLLINO_R0, salotto);
-  // pins[2] = new RemoteOutputPin(remoteHttpHost, 80, 2);
+  pins[1] = new RemoteOutputPin(&remoteHttpHost, 80, 2);
   pinCount = 1;
 
   // Apply restored states to OutputPins (skip index 2 which is RemoteOutputPin)

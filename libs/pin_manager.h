@@ -279,7 +279,7 @@ public:
   // Implement getType() for RemoteOutputPin
   PinType getType() const override { return Pin::TYPE_REMOTE; }
 
-  RemoteOutputPin(String host, int port, int pinnumber)
+  RemoteOutputPin(char *host, int port, int pinnumber)
       : remoteHost(host),
         remotePort(port)
   {
