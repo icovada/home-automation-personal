@@ -117,12 +117,12 @@ void setup()
   Serial.println("Restoring light states from EEPROM...");
   byte savedStates = restoreStateFromEEPROM();
 
-  pins[0] = new OutputPin(CONTROLLINO_R0, cucina);
-  pins[1] = new OutputPin(CONTROLLINO_R1, sgabuzzino);
-  pins[2] = new OutputPin(CONTROLLINO_R2, studio);
+  pins[0] = new OutputPin(CONTROLLINO_R0, studio);
+  pins[1] = new OutputPin(CONTROLLINO_R1, camera);
+  pins[2] = new OutputPin(CONTROLLINO_R2, cucina);
   pins[3] = new OutputPin(CONTROLLINO_R3, disimpegno);
   pins[4] = new OutputPin(CONTROLLINO_R4, ventola);
-  pins[5] = new OutputPin(CONTROLLINO_R6, camera);
+  pins[5] = new OutputPin(CONTROLLINO_R6, sgabuzzino);
 
   // pins[2] = new RemoteOutputPin(remoteHttpHost, 80, 2);
   pinCount = 6;
@@ -141,9 +141,9 @@ void setup()
   }
 
   // Initialize PinManagers before MQTT
-  manager[0] = new PinManager(CONTROLLINO_A0, false, "S0");
-  manager[1] = new PinManager(CONTROLLINO_A1, false, "S1");
-  manager[2] = new PinManager(CONTROLLINO_A2, false, "S2");
+  manager[0] = new PinManager(CONTROLLINO_A0, false, "studio", pins[0]);
+  manager[1] = new PinManager(CONTROLLINO_A1, false, "camera", pins[1]);
+  manager[2] = new PinManager(CONTROLLINO_A2, false, "disimpegno", pins[3], pins[5]);
 
   device.enableSharedAvailability();
   device.enableLastWill();
