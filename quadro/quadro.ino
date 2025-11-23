@@ -12,7 +12,7 @@
 
 #define DEBUG_MODE 0
 #define MANAGER_COUNT 7
-#define PIN_COUNT 1
+#define PIN_COUNT 2
 
 #include "rest_functions.h"
 
@@ -28,7 +28,7 @@ char mqtt_server[16] = ""; // Max "xxx.xxx.xxx.xxx"
 PinManager *manager[MANAGER_COUNT];
 static Pin *pins[PIN_COUNT];
 static int pinCount = 0;
-char remoteHttpHost;
+char remoteHttpHost[64] = "";
 
 int freeRam()
 {
@@ -83,7 +83,7 @@ void setup()
       IPAddress mask = parseIPAddress(doc["net"]["mask"]);
       IPAddress gw = parseIPAddress(doc["net"]["gw"]);
       IPAddress dns = parseIPAddress(doc["net"]["dns"]);
-      remoteHttpHost = doc["remote"];
+      strlcpy(remoteHttpHost, doc["remote"] | "", sizeof(remoteHttpHost));
 
       // start the Ethernet connection and the server:
       Ethernet.begin(mac, ip, dns, gw, mask);
@@ -112,8 +112,8 @@ void setup()
   byte savedStates = restoreStateFromEEPROM();
 
   pins[0] = new OutputPin(CONTROLLINO_R0, salotto);
-  pins[1] = new RemoteOutputPin(&remoteHttpHost, 80, 2);
-  pinCount = 1;
+  pins[1] = new RemoteOutputPin(remoteHttpHost, 80, CONTROLLINO_R2);
+  pinCount = 2;
 
   // Apply restored states to OutputPins (skip index 2 which is RemoteOutputPin)
   for (int i = 0; i < 2; i++) // Only restore first 2 pins (OutputPins)
@@ -133,7 +133,7 @@ void setup()
   manager[1] = new PinManager(CONTROLLINO_A1, false, "cucinaled_up");
   manager[2] = new PinManager(CONTROLLINO_A2, false, "salotto", pins[0]);
   manager[3] = new PinManager(CONTROLLINO_A3, false, "uscita");
-  manager[4] = new PinManager(CONTROLLINO_A4, false, "cucina");
+  manager[4] = new PinManager(CONTROLLINO_A4, false, "cucina", pins[1]);
   manager[5] = new PinManager(CONTROLLINO_A5, false, "salotto_secondario");
   manager[6] = new PinManager(CONTROLLINO_IN1, false, "campanello");
 
