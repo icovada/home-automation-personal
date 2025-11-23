@@ -9,7 +9,7 @@
 #include "eeprom_stuff.h"
 #include "pin_manager.h"
 
-#define DEBUG_MODE 1
+#define DEBUG_MODE 0
 #define MANAGER_COUNT 3
 #define PIN_COUNT 3
 
