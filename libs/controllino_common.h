@@ -1,6 +1,3 @@
-#ifndef CONTROLLINO_COMMON_H
-#define CONTROLLINO_COMMON_H
-
 #include <Controllino.h>
 #include <Ethernet.h>
 #include <ArduinoJson.h>
@@ -121,25 +118,3 @@ void restoreAndApplyPinStates(Pin **pins, int count)
   }
 }
 
-// Standard loop operations for MQTT and pin managers
-template <int MANAGER_COUNT>
-void standardLoopOperations(HAMqtt &mqtt, char *mqtt_server, PinManager *manager[MANAGER_COUNT])
-{
-  // Reconnect to MQTT if connection lost
-  if (!mqtt.isConnected() && mqtt_server[0] != '\0')
-  {
-    mqtt.begin(mqtt_server);
-  }
-
-  mqtt.loop();
-
-  for (int i = 0; i < MANAGER_COUNT; i++)
-  {
-    manager[i]->check();
-  }
-
-  checkPendingStateSave();
-  wdt_reset();
-}
-
-#endif // CONTROLLINO_COMMON_H
