@@ -2,8 +2,7 @@
 #define MQTT_HUMAN_NAME "Controllino Quadro"
 
 #define DEBUG_MODE 0
-#define MANAGER_COUNT 7
-#define INPUT_PIN_SIZE 2
+#define INPUT_PIN_SIZE 7
 #define OUTPUT_PIN_SIZE 6
 
 #include "controllino_common.h"
@@ -18,7 +17,7 @@ HADevice device("quadro");
 HAMqtt mqtt(ethMqttClient, device);
 char mqtt_server[32] = "";
 
-PinManager *manager[MANAGER_COUNT];
+PinManager *manager[INPUT_PIN_SIZE];
 static Pin *pins[INPUT_PIN_SIZE];
 static int outputPinSize = OUTPUT_PIN_SIZE;
 char remoteHttpHost[64] = "";
@@ -37,7 +36,7 @@ void setup()
   HALight *salotto = new HALight("salotto");
   salotto->setName("Salotto");
 
-  OutputPin::setupGlobalRegistry(pins, &outputPinSize);
+  OutputPin::setupGlobalRegistry(pins, INPUT_PIN_SIZE);
 
   pins[0] = new OutputPin(CONTROLLINO_R0, salotto);
   pins[1] = new RemoteOutputPin(remoteHttpHost, 80, CONTROLLINO_R2);
@@ -115,7 +114,7 @@ void loop()
 
   mqtt.loop();
 
-  for (int i = 0; i < MANAGER_COUNT; i++)
+  for (int i = 0; i < INPUT_PIN_SIZE; i++)
   {
     manager[i]->check();
   }
@@ -169,7 +168,7 @@ void loop()
   }
 
   mqtt.loop();
-  for (int i = 0; i < MANAGER_COUNT; i++)
+  for (int i = 0; i < INPUT_PIN_SIZE; i++)
   {
     manager[i]->check();
   }

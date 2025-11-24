@@ -2,8 +2,7 @@
 #define MQTT_HUMAN_NAME "Controllino Salotto"
 
 #define DEBUG_MODE 0
-#define MANAGER_COUNT 3
-#define INPUT_PIN_SIZE 3
+#define INPUT_PIN_SIZE 4
 #define OUTPUT_PIN_SIZE 6
 
 #include "controllino_common.h"
@@ -15,7 +14,7 @@ HADevice device("salotto");
 HAMqtt mqtt(ethMqttClient, device);
 char mqtt_server[32] = "";
 
-PinManager *manager[MANAGER_COUNT];
+PinManager *manager[INPUT_PIN_SIZE];
 static Pin *pins[INPUT_PIN_SIZE];
 static int outputPinSize = OUTPUT_PIN_SIZE;
 
@@ -83,7 +82,7 @@ void loop()
 
   mqtt.loop();
 
-  for (int i = 0; i < MANAGER_COUNT; i++)
+  for (int i = 0; i < INPUT_PIN_SIZE; i++)
   {
     manager[i]->check();
   }
