@@ -3,7 +3,8 @@
 
 #define DEBUG_MODE 0
 #define MANAGER_COUNT 7
-#define PIN_COUNT 2
+#define INPUT_PIN_SIZE 2
+#define OUTPUT_PIN_SIZE 6
 
 #include "controllino_common.h"
 #include "rest_functions.h"
@@ -18,8 +19,8 @@ HAMqtt mqtt(ethMqttClient, device);
 char mqtt_server[16] = "";
 
 PinManager *manager[MANAGER_COUNT];
-static Pin *pins[PIN_COUNT];
-static int pinCount = 0;
+static Pin *pins[INPUT_PIN_SIZE];
+static int outputPinSize = OUTPUT_PIN_SIZE;
 char remoteHttpHost[64] = "";
 
 void setup()
@@ -36,13 +37,12 @@ void setup()
   HALight *salotto = new HALight("salotto");
   salotto->setName("Salotto");
 
-  OutputPin::setupGlobalRegistry(pins, &pinCount);
+  OutputPin::setupGlobalRegistry(pins, &outputPinSize);
 
   pins[0] = new OutputPin(CONTROLLINO_R0, salotto);
   pins[1] = new RemoteOutputPin(remoteHttpHost, 80, CONTROLLINO_R2);
-  pinCount = 2;
 
-  restoreAndApplyPinStates(pins, 2);
+  restoreAndApplyPinStates(pins, outputPinSize);
 
   // Initialize PinManagers
   manager[0] = new PinManager(CONTROLLINO_A0, false, "cucinaled_down");

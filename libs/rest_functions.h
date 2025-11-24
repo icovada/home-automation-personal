@@ -11,7 +11,11 @@
 #define PIN_COUNT 0
 #endif
 
-extern Pin *pins[PIN_COUNT];
+#ifndef INPUT_PIN_SIZE
+#define INPUT_PIN_SIZE 0
+#endif
+
+extern Pin *pins[INPUT_PIN_SIZE];
 
 // Forward declaration of function defined in quadro.ino
 void saveJsonToEEPROM(char *json, int startAddr = 0);
@@ -98,7 +102,7 @@ void handleHttpRequest(EthernetClient &client)
   {
     int pin = atoi(params);
     bool found = false;
-    for (int i = 0; i < PIN_COUNT; i++)
+    for (int i = 0; i < INPUT_PIN_SIZE; i++)
     {
       if (pins[i] && pins[i]->pinNumber == pin)
       {

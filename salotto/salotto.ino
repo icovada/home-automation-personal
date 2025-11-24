@@ -3,7 +3,8 @@
 
 #define DEBUG_MODE 0
 #define MANAGER_COUNT 3
-#define PIN_COUNT 3
+#define INPUT_PIN_SIZE 3
+#define OUTPUT_PIN_SIZE 6
 
 #include "controllino_common.h"
 #include "rest_functions.h"
@@ -15,8 +16,8 @@ HAMqtt mqtt(ethMqttClient, device);
 char mqtt_server[16] = "";
 
 PinManager *manager[MANAGER_COUNT];
-static Pin *pins[PIN_COUNT];
-static int pinCount = 0;
+static Pin *pins[INPUT_PIN_SIZE];
+static int outputPinSize = OUTPUT_PIN_SIZE;
 
 void setup()
 {
@@ -47,7 +48,7 @@ void setup()
   HASwitch *ventola = new HASwitch("ventola");
   ventola->setName("Ventola");
 
-  OutputPin::setupGlobalRegistry(pins, &pinCount);
+  OutputPin::setupGlobalRegistry(pins, &outputPinSize);
 
   pins[0] = new OutputPin(CONTROLLINO_R0, studio);
   pins[1] = new OutputPin(CONTROLLINO_R1, camera);
@@ -55,9 +56,8 @@ void setup()
   pins[3] = new OutputPin(CONTROLLINO_R3, disimpegno);
   pins[4] = new OutputPin(CONTROLLINO_R4, ventola);
   pins[5] = new OutputPin(CONTROLLINO_R6, sgabuzzino);
-  pinCount = 6;
 
-  restoreAndApplyPinStates(pins, 2);
+  restoreAndApplyPinStates(pins, outputPinSize);
 
   // Initialize PinManagers
   manager[0] = new PinManager(CONTROLLINO_A0, false, "studio", pins[0]);
