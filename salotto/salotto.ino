@@ -13,7 +13,7 @@ EthernetServer ethServer(80);
 EthernetClient ethMqttClient;
 HADevice device("salotto");
 HAMqtt mqtt(ethMqttClient, device);
-char mqtt_server[16] = "";
+char mqtt_server[32] = "";
 
 PinManager *manager[MANAGER_COUNT];
 static Pin *pins[INPUT_PIN_SIZE];
