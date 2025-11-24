@@ -3,7 +3,7 @@
 
 #define DEBUG_MODE 0
 #define INPUT_PIN_SIZE 7
-#define OUTPUT_PIN_SIZE 6
+#define OUTPUT_PIN_SIZE 3
 
 #include "controllino_common.h"
 #include "rest_functions.h"
@@ -36,10 +36,14 @@ void setup()
   HALight *salotto = new HALight("salotto");
   salotto->setName("Salotto");
 
-  OutputPin::setupGlobalRegistry(pins, INPUT_PIN_SIZE);
+  HALight *esterno_est = new HALight("esterno_est");
+  esterno_est->setName("Esterno Est");
+
+  OutputPin::setupGlobalRegistry(pins, &outputPinSize);
 
   pins[0] = new OutputPin(CONTROLLINO_R0, salotto);
-  pins[1] = new RemoteOutputPin(remoteHttpHost, 80, CONTROLLINO_R2);
+  pins[1] = new OutputPin(CONTROLLINO_R1, esterno_est);
+  pins[2] = new RemoteOutputPin(remoteHttpHost, 80, CONTROLLINO_R2);
 
   restoreAndApplyPinStates(pins, outputPinSize);
 
@@ -48,7 +52,7 @@ void setup()
   manager[1] = new PinManager(CONTROLLINO_A1, false, "cucinaled_up");
   manager[2] = new PinManager(CONTROLLINO_A2, false, "salotto", pins[0]);
   manager[3] = new PinManager(CONTROLLINO_A3, false, "uscita");
-  manager[4] = new PinManager(CONTROLLINO_A4, false, "cucina", pins[1]);
+  manager[4] = new PinManager(CONTROLLINO_A4, false, "cucina", pins[2]);
   manager[5] = new PinManager(CONTROLLINO_A5, false, "salotto_secondario");
   manager[6] = new PinManager(CONTROLLINO_IN1, false, "campanello");
 

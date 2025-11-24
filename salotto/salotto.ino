@@ -3,7 +3,7 @@
 
 #define DEBUG_MODE 0
 #define INPUT_PIN_SIZE 4
-#define OUTPUT_PIN_SIZE 6
+#define OUTPUT_PIN_SIZE 7
 
 #include "controllino_common.h"
 #include "rest_functions.h"
@@ -17,6 +17,7 @@ char mqtt_server[32] = "";
 PinManager *manager[INPUT_PIN_SIZE];
 static Pin *pins[INPUT_PIN_SIZE];
 static int outputPinSize = OUTPUT_PIN_SIZE;
+char remoteHttpHost[64] = "";
 
 void setup()
 {
@@ -24,7 +25,7 @@ void setup()
   initSerial();
 
   StaticJsonDocument<256> doc;
-  initNetworkFromEEPROM(doc);
+  initNetworkFromEEPROM(doc, remoteHttpHost, sizeof(remoteHttpHost));
 
   ethServer.begin();
 
@@ -55,6 +56,7 @@ void setup()
   pins[3] = new OutputPin(CONTROLLINO_R3, disimpegno);
   pins[4] = new OutputPin(CONTROLLINO_R4, ventola);
   pins[5] = new OutputPin(CONTROLLINO_R6, sgabuzzino);
+  pins[6] = new RemoteOutputPin(remoteHttpHost, 80, CONTROLLINO_R1);
 
   restoreAndApplyPinStates(pins, outputPinSize);
 
@@ -62,6 +64,7 @@ void setup()
   manager[0] = new PinManager(CONTROLLINO_A0, false, "studio", pins[0]);
   manager[1] = new PinManager(CONTROLLINO_A1, false, "camera", pins[1]);
   manager[2] = new PinManager(CONTROLLINO_A2, false, "disimpegno", pins[3], pins[5]);
+  manager[3] = new PinManager(CONTROLLINO_A3, false, "esterno_est", pins[6]);
 
   initMQTT(device, mqtt, doc, mqtt_server, sizeof(mqtt_server), MQTT_HUMAN_NAME);
 
