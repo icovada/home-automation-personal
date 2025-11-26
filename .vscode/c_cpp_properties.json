@@ -42,7 +42,8 @@
                 "/Users/federico/Library/Arduino15/packages/CONTROLLINO_Boards/**",
                 "/Users/federico/Library/Arduino15/packages/industruino/**",
                 "/Users/federico/Library/Arduino15/libraries/**",
-                "/Users/federico/Documents/Arduino/libraries/**"
+                "/Users/federico/Documents/Arduino/libraries/**",
+                "/Users/federico/Documents/Arduino/libraries/JC_Button/src/**"
             ],
             "defines": [
                 "ARDUINO=10819",

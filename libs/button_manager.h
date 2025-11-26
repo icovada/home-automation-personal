@@ -12,6 +12,7 @@
 #include <Arduino.h>
 #include <ArduinoHA.h>
 #include <Ethernet.h>
+#include <JC_Button.h> // https://github.com/JChristensen/JC_Button
 #include "eeprom_stuff.h"
 
 enum buttonStateMachine
@@ -337,7 +338,7 @@ public:
   }
 };
 
-class PinManager
+class ButtonManager
 {
 public:
   int inputPin = -1;
@@ -352,7 +353,7 @@ public:
   Pin *pinLong;
   char _triggerId[32]; // Fixed buffer instead of String
 
-  PinManager()
+  ButtonManager()
       : shortPressTrigger(nullptr),
         longPressTrigger(nullptr),
         pinShort(nullptr),
@@ -361,13 +362,13 @@ public:
     _triggerId[0] = '\0';
   }
 
-  PinManager(int inPin, bool isAnalog, const char *name)
-      : PinManager(inPin, isAnalog, name, nullptr, nullptr) {}
+  ButtonManager(int inPin, bool isAnalog, const char *name)
+      : ButtonManager(inPin, isAnalog, name, nullptr, nullptr) {}
 
-  PinManager(int inPin, bool isAnalog, const char *name, Pin *pinShort)
-      : PinManager(inPin, isAnalog, name, pinShort, nullptr) {}
+  ButtonManager(int inPin, bool isAnalog, const char *name, Pin *pinShort)
+      : ButtonManager(inPin, isAnalog, name, pinShort, nullptr) {}
 
-  PinManager(int inPin, bool isAnalog, const char *name, Pin *pinShort, Pin *pinLong)
+  ButtonManager(int inPin, bool isAnalog, const char *name, Pin *pinShort, Pin *pinLong)
       : inputPin(inPin),
         analog(isAnalog),
         shortPressTrigger(nullptr),
@@ -386,7 +387,7 @@ public:
     longPressTrigger = new HADeviceTrigger(HADeviceTrigger::ButtonLongPressType, _triggerId);
   }
 
-  ~PinManager()
+  ~ButtonManager()
   {
     if (shortPressTrigger != nullptr)
       delete shortPressTrigger;

@@ -4,7 +4,7 @@
 #include <avr/wdt.h>
 #include <ArduinoHA.h>
 #include "eeprom_stuff.h"
-#include "pin_manager.h"
+#include "button_manager.h"
 
 // Forward declaration
 void saveJsonToEEPROM(char *json, int startAddr = 0);

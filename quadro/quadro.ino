@@ -17,7 +17,7 @@ HADevice device("quadro");
 HAMqtt mqtt(ethMqttClient, device);
 char mqtt_server[32] = "";
 
-PinManager *manager[INPUT_PIN_SIZE];
+ButtonManager *manager[INPUT_PIN_SIZE];
 static Pin *pins[INPUT_PIN_SIZE];
 static int outputPinSize = OUTPUT_PIN_SIZE;
 char remoteHttpHost[64] = "";
@@ -52,14 +52,14 @@ void setup()
   restoreAndApplyPinStates(pins, outputPinSize);
 
   // Initialize PinManagers
-  manager[0] = new PinManager(CONTROLLINO_A0, false, "cucinaled_down");
-  manager[1] = new PinManager(CONTROLLINO_A1, false, "cucinaled_up");
-  manager[2] = new PinManager(CONTROLLINO_A2, false, "salotto", pins[0]);
-  manager[3] = new PinManager(CONTROLLINO_A3, false, "uscita");
-  manager[4] = new PinManager(CONTROLLINO_A4, false, "cucina", pins[3]);
-  manager[5] = new PinManager(CONTROLLINO_A5, false, "salotto_secondario");
-  manager[6] = new PinManager(CONTROLLINO_A6, false, "esterno_ovest_cucina", pins[2], pins[3]);
-  manager[7] = new PinManager(CONTROLLINO_IN1, false, "campanello");
+  manager[0] = new ButtonManager(CONTROLLINO_A0, false, "cucinaled_down");
+  manager[1] = new ButtonManager(CONTROLLINO_A1, false, "cucinaled_up");
+  manager[2] = new ButtonManager(CONTROLLINO_A2, false, "salotto", pins[0]);
+  manager[3] = new ButtonManager(CONTROLLINO_A3, false, "uscita");
+  manager[4] = new ButtonManager(CONTROLLINO_A4, false, "cucina", pins[3]);
+  manager[5] = new ButtonManager(CONTROLLINO_A5, false, "salotto_secondario");
+  manager[6] = new ButtonManager(CONTROLLINO_A6, false, "esterno_ovest_cucina", pins[2], pins[3]);
+  manager[7] = new ButtonManager(CONTROLLINO_IN1, false, "campanello");
 
   Serial.print("Free RAM before: ");
   Serial.println(freeRam());

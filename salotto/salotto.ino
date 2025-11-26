@@ -14,7 +14,7 @@ HADevice device("salotto");
 HAMqtt mqtt(ethMqttClient, device);
 char mqtt_server[32] = "";
 
-PinManager *manager[INPUT_PIN_SIZE];
+ButtonManager *manager[INPUT_PIN_SIZE];
 static Pin *pins[INPUT_PIN_SIZE];
 static int outputPinSize = OUTPUT_PIN_SIZE;
 char remoteHttpHost[64] = "";
@@ -63,12 +63,12 @@ void setup()
   restoreAndApplyPinStates(pins, outputPinSize);
 
   // Initialize PinManagers
-  manager[0] = new PinManager(CONTROLLINO_A0, false, "studio", pins[0]);
-  manager[1] = new PinManager(CONTROLLINO_A1, false, "camera", pins[1]);
-  manager[2] = new PinManager(CONTROLLINO_A2, false, "disimpegno", pins[3], pins[5]);
-  manager[3] = new PinManager(CONTROLLINO_A3, false, "esterno_est_studio", pins[6], pins[0]);
-  manager[4] = new PinManager(CONTROLLINO_A4, false, "esterno_est_salotto", pins[6], pins[7]);
-  manager[5] = new PinManager(CONTROLLINO_A5, false, "esterno_ovest_camera", pins[8], pins[1]);
+  manager[0] = new ButtonManager(CONTROLLINO_A0, false, "studio", pins[0]);
+  manager[1] = new ButtonManager(CONTROLLINO_A1, false, "camera", pins[1]);
+  manager[2] = new ButtonManager(CONTROLLINO_A2, false, "disimpegno", pins[3], pins[5]);
+  manager[3] = new ButtonManager(CONTROLLINO_A3, false, "esterno_est_studio", pins[6], pins[0]);
+  manager[4] = new ButtonManager(CONTROLLINO_A4, false, "esterno_est_salotto", pins[6], pins[7]);
+  manager[5] = new ButtonManager(CONTROLLINO_A5, false, "esterno_ovest_camera", pins[8], pins[1]);
 
   initMQTT(device, mqtt, doc, mqtt_server, sizeof(mqtt_server), MQTT_HUMAN_NAME);
 
