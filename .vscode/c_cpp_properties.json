@@ -22,12 +22,13 @@
                 "F_CPU=80000000L",
                 "LWIP_OPEN_SRC",
                 "__ets__",
-                "ICACHE_FLASH"
+                "ICACHE_FLASH",
+                "__INTELLISENSE__"
             ],
-            "compilerPath": "/usr/bin/clang",
+            "compilerPath": "/Users/federico/Library/Arduino15/packages/esp8266/tools/xtensa-lx106-elf-gcc/3.1.0-gcc10.3-e5f9fec/bin/xtensa-lx106-elf-g++",
             "cStandard": "c17",
             "cppStandard": "c++17",
-            "intelliSenseMode": "macos-clang-arm64",
+            "intelliSenseMode": "gcc-x64",
             "forcedInclude": []
         },
         {
