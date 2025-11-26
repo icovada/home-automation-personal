@@ -12,14 +12,6 @@ along with this program; if not, write to the Free Software Foundation,
 Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301  USA
 */
 
-// EEPROM data table
-// 0 tNordPosition
-// 1 tSudPosition
-// 2 tNordDuration
-// 3 tSudDuration
-// 4 upSeconds
-// 5 downSeconds
-
 // sketch upload command
 // curl -F "image=@tende_est.ino.bin" http://192.168.1.18/update -v
 
@@ -27,6 +19,7 @@ Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301  USA
 #define MQTT_HUMAN_NAME "Tende Est"
 
 #include <math.h>
+#include <EEPROM.h>
 #include <ESP8266HTTPUpdateServer.h>
 #include <ESP8266WebServer.h>
 #include <ESP8266WiFi.h>
@@ -54,18 +47,56 @@ public:
   unsigned long stopMillis = -1;
   unsigned long lastUpdate = 0;
   int startPosition = 0;
+  int eepromAddress = -1;
 
-  TendaManager(int pinUp, int pinDown, int timeUp, int timeDown, HACover *tenda)
+  TendaManager(int pinUp, int pinDown, int timeUp, int timeDown, HACover *tenda, int eepromAddress)
       : pinUp(pinUp),
         pinDown(pinDown),
         timeUp(timeUp),
         timeDown(timeDown),
-        tenda(tenda)
+        tenda(tenda),
+        eepromAddress(eepromAddress)
   {
     pinMode(pinUp, OUTPUT);
     pinMode(pinDown, OUTPUT);
     digitalWrite(pinUp, 0);
     digitalWrite(pinDown, 0);
+  }
+
+  void loadPosition()
+  {
+    if (eepromAddress >= 0)
+    {
+      int savedPosition = EEPROM.read(eepromAddress);
+      if (savedPosition <= 100)
+      {
+        tenda->setPosition(savedPosition);
+        Serial.print("Loaded position: ");
+        Serial.println(savedPosition);
+      }
+      else
+      {
+        // Invalid EEPROM value, set to 0
+        tenda->setPosition(100);
+        Serial.println("No valid saved position, setting to 0");
+      }
+
+      if (savedPosition != 100){
+        open();
+      }
+    }
+  }
+
+  void savePosition()
+  {
+    if (eepromAddress >= 0)
+    {
+      int currentPosition = tenda->getCurrentPosition();
+      EEPROM.write(eepromAddress, currentPosition);
+      EEPROM.commit();
+      Serial.print("Saved position: ");
+      Serial.println(currentPosition);
+    }
   }
 
   void close()
@@ -87,6 +118,9 @@ public:
     tenda->setState(HACover::CoverState::StateOpening);
     startMillis = millis();
     startPosition = tenda->getCurrentPosition();
+    // move one step open before saving so it's always marked open
+    tenda->setCurrentPosition(startPosition-1);
+    savePosition();
     digitalWrite(pinDown, true);
   }
 
@@ -126,6 +160,7 @@ public:
       Serial.println("void stop reset");
       stopMillis = -1;
       sendPosition();
+      savePosition();
     }
   }
 
@@ -204,8 +239,8 @@ public:
 HACover ha_nord("tenda_est_nord", HACover::Features::PositionFeature);
 HACover ha_sud("tenda_est_sud", HACover::Features::PositionFeature);
 
-TendaManager nord(D1, D2, 35, 30, &ha_nord);
-TendaManager sud(D6, D7, 35, 30, &ha_sud);
+TendaManager nord(D1, D2, 35, 30, &ha_nord, 0);
+TendaManager sud(D6, D7, 35, 30, &ha_sud, 1);
 
 void onCommand(HACover::CoverCommand cmd, HACover *sender)
 {
@@ -253,6 +288,9 @@ void setup()
 {
   Serial.begin(115200);
 
+  // Initialize EEPROM
+  EEPROM.begin(512);
+
   ha_nord.setDeviceClass("blind");
   ha_nord.setName("Tenda Est Nord");
   ha_nord.onCommand(onCommand);
@@ -277,15 +315,16 @@ void setup()
 
   mqtt.begin("mqtt.in.tabbo.it");
 
-  // Wait for MQTT connection and set initial positions
+  // Wait for MQTT connection and load/set initial positions
   while (!mqtt.isConnected())
   {
     mqtt.loop();
     delay(100);
   }
 
-  ha_nord.setPosition(0);
-  ha_sud.setPosition(0);
+  // Load positions from EEPROM or set to 0 if not valid
+  nord.loadPosition();
+  sud.loadPosition();
 
   httpUpdater.setup(&httpServer);
   httpServer.begin();
