@@ -68,7 +68,7 @@ void setup()
   manager[2] = new PinManager(CONTROLLINO_A2, false, "disimpegno", pins[3], pins[5]);
   manager[3] = new PinManager(CONTROLLINO_A3, false, "esterno_est_studio", pins[6], pins[0]);
   manager[4] = new PinManager(CONTROLLINO_A4, false, "esterno_est_salotto", pins[6], pins[7]);
-  manager[5] = new PinManager(CONTROLLINO_A4, false, "esterno_ovest_camera", pins[8], pins[1]);
+  manager[5] = new PinManager(CONTROLLINO_A5, false, "esterno_ovest_camera", pins[8], pins[1]);
 
   initMQTT(device, mqtt, doc, mqtt_server, sizeof(mqtt_server), MQTT_HUMAN_NAME);
 
