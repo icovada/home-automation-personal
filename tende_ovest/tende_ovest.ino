@@ -11,384 +11,352 @@ You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software Foundation,
 Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301  USA
 */
-//
-
-// EEPROM data table
-// 0 tNordPosition
-// 1 tSudPosition
-// 2 tNordDuration
-// 3 tSudDuration
-// 4 upSeconds
-// 5 downSeconds
 
 // sketch upload command
 // curl -F "image=@tende_est.ino.bin" http://192.168.1.18/update -v
 
+#define MQTT_NAME "tende_ovest"
+#define MQTT_HUMAN_NAME "Tende Ovest"
+
+#include <math.h>
 #include <EEPROM.h>
 #include <ESP8266HTTPUpdateServer.h>
 #include <ESP8266WebServer.h>
 #include <ESP8266WiFi.h>
-#include <PubSubClient.h>
 #include <WiFiClient.h>
+#include <ArduinoHA.h>
+#include "credentials.h"
 
-#define wifi_ssid "ssid"
-#define wifi_password "password"
-
-#define mqtt_server "192.168.1.2"
-#define mqtt_id "tendeovest"
-
-#define topic_tende_set_nord "roncello/esterno/ovest/set/nord"
-#define topic_tende_set_sud "roncello/esterno/ovest/set/sud"
-#define topic_tende_set_group "roncello/esterno/ovest/set/group"
-
-#define topic_tende_status_nord "roncello/esterno/ovest/status/nord"
-#define topic_tende_status_sud "roncello/esterno/ovest/status/sud"
-
-#define topic_telecomando_set "roncello/esterno/ovest/set/telecomando"
-
-#define topic_upseconds_set "roncello/esterno/ovest/set/upseconds"
-#define topic_downseconds_set "roncello/esterno/ovest/set/downseconds"
-
-unsigned long tNordActBegin = 0;
-unsigned long tSudActBegin = 0;
-unsigned long tNordDuration = 0;
-unsigned long tSudDuration = 0;
-unsigned long lastMQTT = 0;
-bool tNordGoingUp = false;
-bool tSudGoingUp = false;
-bool tNordMoving = false;
-bool tSudMoving = false;
-
-unsigned long oldMillisNord = 0;
-unsigned long oldMillisSud = 0;
-
-WiFiClient espClient;
-PubSubClient client(espClient);
-
-String sTopic;
-String sPayload;
-
-int tNordPosition;
-int tSudPosition;
-
-int upSeconds;
-int downSeconds;
+WiFiClient wifiMqttClient;
+HADevice device(MQTT_NAME);
+HAMqtt mqtt(wifiMqttClient, device);
+char mqtt_server[32] = "";
 
 ESP8266WebServer httpServer(80);
 ESP8266HTTPUpdateServer httpUpdater;
 
-int setNord(int position) {
-  Serial.println("SetNord");
-  tNordActBegin = millis();
-  tNordMoving = true;
-  oldMillisNord = 0;
-  if (position == 100) {
-    digitalWrite(D6, HIGH);
-    digitalWrite(D7, LOW);
-    tNordGoingUp = false;
-    tNordDuration = downSeconds * 1000 + 15000;
-  } else if (position == 0) {
-    digitalWrite(D6, LOW);
-    digitalWrite(D7, HIGH);
-    tNordGoingUp = true;
-    tNordDuration = upSeconds * 1000 + 15000;
-  } else if (position > tNordPosition) {
-    digitalWrite(D6, HIGH);
-    digitalWrite(D7, LOW);
-    tNordGoingUp = false;
-    // Map position in 100 degrees to total seconds it takes
-    tNordDuration = downSeconds * 10 * (position - tNordPosition);
-  } else if (position < tNordPosition) {
-    digitalWrite(D6, LOW);
-    digitalWrite(D7, HIGH);
-    tNordGoingUp = true;
-    tNordDuration = upSeconds * 10 * (tNordPosition - position);
+class TendaManager
+{
+public:
+  int pinUp = -1;
+  int pinDown = -1;
+  int timeUp = -1;
+  int timeDown = -1;
+  HACover *tenda;
+  unsigned long startMillis = 0;
+  unsigned long stopMillis = -1;
+  unsigned long lastUpdate = 0;
+  int startPosition = 0;
+  int eepromAddress = -1;
+
+  TendaManager(int pinUp, int pinDown, int timeUp, int timeDown, HACover *tenda, int eepromAddress)
+      : pinUp(pinUp),
+        pinDown(pinDown),
+        timeUp(timeUp),
+        timeDown(timeDown),
+        tenda(tenda),
+        eepromAddress(eepromAddress)
+  {
+    pinMode(pinUp, OUTPUT);
+    pinMode(pinDown, OUTPUT);
+    digitalWrite(pinUp, 0);
+    digitalWrite(pinDown, 0);
   }
-  Serial.print("Target: ");
-  Serial.println(tNordDuration);
-  EEPROM.write(2, position);
-  EEPROM.commit();
-}
 
-int setSud(int position) {
-  Serial.println("SetSud");
-  tSudActBegin = millis();
-  tSudMoving = true;
-  oldMillisSud = 0;
-  if (position == 100) {
-    digitalWrite(D1, HIGH);
-    digitalWrite(D2, LOW);
-    tSudGoingUp = false;
-    tSudDuration = downSeconds * 1000 + 15000;
-  } else if (position == 0) {
-    digitalWrite(D1, LOW);
-    digitalWrite(D2, HIGH);
-    tSudGoingUp = true;
-    tSudDuration = upSeconds * 1000 + 15000;
-  } else if (position > tSudPosition) {
-    digitalWrite(D1, HIGH);
-    digitalWrite(D2, LOW);
-    tSudGoingUp = false;
-    // Map position in 100 degrees to total seconds it takes
-    tSudDuration = downSeconds * 10 * (position - tSudPosition);
-  } else if (position < tSudPosition) {
-    digitalWrite(D1, LOW);
-    digitalWrite(D2, HIGH);
-    tSudGoingUp = true;
-    tSudDuration = upSeconds * 10 * (tSudPosition - position);
+  void loadPosition()
+  {
+    if (eepromAddress >= 0)
+    {
+      int savedPosition = EEPROM.read(eepromAddress);
+      if (savedPosition <= 100)
+      {
+        tenda->setPosition(savedPosition);
+        Serial.print("Loaded position: ");
+        Serial.println(savedPosition);
+      }
+      else
+      {
+        // Invalid EEPROM value, set to 0
+        tenda->setPosition(100);
+        Serial.println("No valid saved position, setting to 0");
+      }
+
+      if (savedPosition != 100)
+      {
+        open();
+      }
+    }
   }
-  Serial.print("Target: ");
-  Serial.println(tSudDuration);
-  EEPROM.write(3, position);
-  EEPROM.commit();
-}
 
-int whereInTheWorldIsTenda(unsigned long actBegin, bool goingUp, int tPosition,
-                           char *topic) {
-  unsigned long tTime = millis() - actBegin;
-  int newPosition;
-  if (goingUp == true) {
-    newPosition = posValidator(tPosition - tTime / ((upSeconds * 1000) / 100));
-  } else {
-    newPosition =
-        posValidator(tPosition + tTime / ((downSeconds * 1000) / 100));
+  void savePosition()
+  {
+    if (eepromAddress >= 0)
+    {
+      int currentPosition = tenda->getCurrentPosition();
+      EEPROM.write(eepromAddress, currentPosition);
+      EEPROM.commit();
+      Serial.print("Saved position: ");
+      Serial.println(currentPosition);
+    }
   }
-  client.publish(topic, String(newPosition).c_str());
-  return newPosition;
-}
 
-int stopNord() {
-  digitalWrite(D6, LOW);
-  digitalWrite(D7, LOW);
-  tNordMoving = false;
-  int newPosition = whereInTheWorldIsTenda(
-      tNordActBegin, tNordGoingUp, tNordPosition, topic_tende_status_nord);
-  EEPROM.write(0, newPosition);
-  EEPROM.write(2, newPosition);
-  EEPROM.commit();
-  return newPosition;
-}
-
-int stopSud() {
-  digitalWrite(D1, LOW);
-  digitalWrite(D2, LOW);
-  tSudMoving = false;
-  int newPosition = whereInTheWorldIsTenda(
-      tSudActBegin, tSudGoingUp, tSudPosition, topic_tende_status_sud);
-  EEPROM.write(1, newPosition);
-  EEPROM.write(3, newPosition);
-  EEPROM.commit();
-  return newPosition;
-}
-
-int posValidator(long position) {
-  if (position > 100) {
-    position = 100;
+  void close()
+  {
+    // go up
+    Serial.println("Close");
+    stop(true, false);
+    tenda->setState(HACover::CoverState::StateClosing);
+    startMillis = millis();
+    startPosition = tenda->getCurrentPosition();
+    digitalWrite(pinUp, true);
   }
-  if (position < 0) {
-    position = 0;
+
+  void open()
+  {
+    // go down
+    Serial.println("Open");
+    stop(true, false);
+    tenda->setState(HACover::CoverState::StateOpening);
+    startMillis = millis();
+    startPosition = tenda->getCurrentPosition();
+    // move one step open before saving so it's always marked open
+    tenda->setCurrentPosition(startPosition - 1);
+    savePosition();
+    digitalWrite(pinDown, true);
   }
-  return int(position);
+
+  void stop(bool simple = false, bool send = true)
+  {
+    Serial.println("void stop");
+    int curPosition = getPosition();
+    if (curPosition == 100)
+    {
+      tenda->setState(HACover::CoverState::StateOpen);
+    }
+    if (send)
+    {
+      if (tenda->getCurrentState() == HACover::CoverState::StateClosing)
+      {
+        tenda->setState(HACover::CoverState::StateClosed);
+      }
+      else if (tenda->getCurrentState() == HACover::CoverState::StateOpening)
+      {
+        if (getPosition() == 100)
+        {
+          tenda->setState(HACover::CoverState::StateOpen);
+        }
+        else
+        {
+          tenda->setState(HACover::CoverState::StateStopped);
+        }
+      }
+      lastUpdate = millis();
+    }
+    tenda->setPosition(curPosition);
+    digitalWrite(pinDown, false);
+    digitalWrite(pinUp, false);
+
+    if (!simple)
+    {
+      Serial.println("void stop reset");
+      stopMillis = -1;
+      sendPosition();
+      savePosition();
+    }
+  }
+
+  void check()
+  {
+    if (tenda->getCurrentState() == HACover::CoverState::StateOpening || tenda->getCurrentState() == HACover::CoverState::StateClosing)
+    {
+      if (stopMillis == -1)
+      {
+        if (millis() - startMillis > 40000)
+        {
+          // it had enough
+          Serial.println("Stop end run");
+          stop();
+          return;
+        }
+      }
+      else if (millis() >= stopMillis)
+      {
+        Serial.println("Stop reached target");
+        stop();
+      }
+      sendPosition();
+    }
+  }
+
+  void setPosition(int position)
+  {
+    int percentage_to_go = position - tenda->getCurrentPosition();
+    if (percentage_to_go > 0)
+    {
+      // open, go down
+      open();
+      stopMillis = millis() + (timeDown / 100 * abs(percentage_to_go));
+    }
+    else if (percentage_to_go < 0)
+    {
+      // close, go up
+      close();
+      stopMillis = millis() + (timeUp / 100 * abs(percentage_to_go));
+    }
+  }
+
+  int getPosition()
+  {
+    if (tenda->getCurrentState() == HACover::CoverState::StateOpening)
+    {
+      // Opening = moving up (retracting) = increasing position toward 100
+      int elapsed = (millis() - startMillis) * 100 / (timeUp * 1000);
+      return min(startPosition + elapsed, 100);
+    }
+    else if (tenda->getCurrentState() == HACover::CoverState::StateClosing)
+    {
+      // Closing = moving down (extending) = decreasing position toward 0
+      int elapsed = (millis() - startMillis) * 100 / (timeDown * 1000);
+      return max(startPosition - elapsed, 0);
+    }
+    else
+    {
+      return tenda->getCurrentPosition();
+    }
+  }
+
+  void sendPosition()
+  {
+    int elapsed = -1;
+    if (millis() - 1000 > lastUpdate)
+    {
+      int position = getPosition();
+      tenda->setPosition(position);
+      lastUpdate = millis();
+    }
+  }
+};
+
+HACover ha_nord("tenda_ovst_nord", HACover::Features::PositionFeature);
+HACover ha_sud("tenda_ovest_sud", HACover::Features::PositionFeature);
+HAButton telecomando("telecomando_cancello");
+
+TendaManager nord(D1, D2, 35, 30, &ha_nord, 0);
+TendaManager sud(D6, D7, 35, 30, &ha_sud, 1);
+
+void onCommand(HACover::CoverCommand cmd, HACover *sender)
+{
+  if (cmd == HACover::CoverCommand::CommandClose)
+  {
+    Serial.println("Received Close");
+    if (nord.tenda == sender)
+    {
+      nord.close();
+    }
+    else if (sud.tenda == sender)
+    {
+      sud.close();
+    }
+  }
+  else if (cmd == HACover::CoverCommand::CommandOpen)
+  {
+    Serial.println("Received Open");
+    if (nord.tenda == sender)
+    {
+      nord.open();
+    }
+    else if (sud.tenda == sender)
+    {
+      sud.open();
+    }
+  }
+  else if (cmd == HACover::CoverCommand::CommandStop)
+  {
+    Serial.println("Received Stop");
+    if (nord.tenda == sender)
+    {
+      nord.stop();
+    }
+    else if (sud.tenda == sender)
+    {
+      sud.stop();
+    }
+  }
 }
 
-void telecomando() {
+void telecomandoOnCommand(HAButton *sender){
   digitalWrite(D8, LOW);
   delay(1000);
   digitalWrite(D8, HIGH);
 }
 
-// connessione WiFi
-// ---------------------------------------------------------------------------|
-void setup_wifi() {
-  delay(10);
-  Serial.println("///////////////// - WiFi - /////////////////");
-  Serial.print("Connessione a ");
-  Serial.println(wifi_ssid);
+// setup
+// --------------------------------------------------------------------------------------|
+void setup()
+{
+  Serial.begin(115200);
+
+  // set telecomando
+  pinMode(D8, OUTPUT);
+  digitalWrite(D8, 1);
+
+  // Initialize EEPROM
+  EEPROM.begin(512);
+
+  ha_nord.setDeviceClass("blind");
+  ha_nord.setName("Tenda Est Nord");
+  ha_nord.onCommand(onCommand);
+
+  ha_sud.setDeviceClass("blind");
+  ha_sud.setName("Tenda Est Sud");
+  ha_sud.onCommand(onCommand);
+
+  telecomando.setName("Telecomando Cancello");
+  telecomando.setIcon("mdi:gate-open");
+  telecomando.onCommand(telecomandoOnCommand);
+
   WiFi.mode(WIFI_STA);
   WiFi.begin(wifi_ssid, wifi_password);
-  while (WiFi.status() != WL_CONNECTED) {
+  while (WiFi.status() != WL_CONNECTED)
+  {
     delay(500);
     Serial.print(".");
   }
-  Serial.println("Connesso");
-  Serial.print("IP=");
-  Serial.println(WiFi.localIP());
-  Serial.println("////////////////////////////////////////////");
-  Serial.println("");
-}
 
-// connessione MQTT
-// ---------------------------------------------------------------------------|
-void reconnect() {
-  unsigned long disconnectMillis = millis();
-  while (!client.connected()) {
-    Serial.println("///////////////// - MQTT - /////////////////");
-    Serial.println("Connessione...");
+  device.setName(MQTT_HUMAN_NAME);
+  device.setUniqueId((const byte *)MQTT_NAME, 9);
 
-    if (client.connect(mqtt_id)) {
-      // digitalWrite(D2,HIGH);
-      Serial.println("Connesso");
-      Serial.println("////////////////////////////////////////////");
+  device.enableSharedAvailability();
+  device.enableLastWill();
 
-      client.subscribe("roncello/esterno/ovest/set/#");
-      client.subscribe("timer/1min");
-    } else {
-      if ((millis() - disconnectMillis) >= 30000) {
-        emergencyProcedure();
-      }
-      Serial.print("Connessione fallita, rc=");
-      Serial.println(client.state());
-      Serial.println("Nuovo tentativo tra 5 secondi");
-      delay(5000);
-    }
+  mqtt.begin("mqtt.in.tabbo.it");
+
+  // Wait for MQTT connection and load/set initial positions
+  while (!mqtt.isConnected())
+  {
+    mqtt.loop();
+    delay(100);
   }
-}
 
-// callback MQTT
-// ------------------------------------------------------------------------------|
-void callback(char *topic, byte *payload, unsigned int length) {
-  sTopic = topic;
-  sPayload = "";
-
-  lastMQTT = millis();
-  Serial.print("Messaggio ricevuto [");
-  Serial.print(topic);
-  Serial.print("] ");
-  for (int i = 0; i < length; i++) {
-    Serial.print((char)payload[i]);
-    sPayload += (char)payload[i];
-  }
-  Serial.println();
-  Serial.println(String(sPayload));
-
-  if (sTopic == topic_tende_set_nord) {
-    if (tNordMoving) {
-      tNordPosition = stopNord();
-    }
-    if (String(sPayload) != "STOP") {
-      setNord(sPayload.toInt());
-    }
-  } else if (sTopic == topic_tende_set_sud) {
-    if (tSudMoving) {
-      tSudPosition = stopSud();
-    }
-    if (String(sPayload) != "STOP") {
-      setSud(sPayload.toInt());
-    }
-  } else if (sTopic == topic_tende_set_group) {
-    if (tSudMoving) {
-      tSudPosition = stopSud();
-    }
-    if (tNordMoving) {
-      tNordPosition = stopNord();
-    }
-    if (String(sPayload) != "STOP") {
-      setSud(sPayload.toInt());
-      setNord(sPayload.toInt());
-    }
-  } else if (sTopic == topic_upseconds_set) {
-    upSeconds = sPayload.toInt();
-    EEPROM.write(4, sPayload.toInt());
-    EEPROM.commit();
-  } else if (sTopic == topic_downseconds_set) {
-    downSeconds = sPayload.toInt();
-    EEPROM.write(5, sPayload.toInt());
-    EEPROM.commit();
-  } else if (sTopic == topic_telecomando_set) {
-    telecomando();
-  }
-}
-
-void emergencyProcedure() {
-  int tTargetNordPosition;
-  int tTargetSudPosition;
-  int tLastKnownNordPosition;
-  int tLastKnownSudPosition;
-
-  tTargetNordPosition = EEPROM.read(0);
-  tTargetSudPosition = EEPROM.read(1);
-  tLastKnownNordPosition = EEPROM.read(2);
-  tLastKnownSudPosition = EEPROM.read(3);
-
-  // find out if any of the previous states was != 0
-  if (tTargetNordPosition != 0 || tTargetSudPosition != 0 ||
-      tLastKnownNordPosition != 0 || tLastKnownSudPosition != 0) {
-    // Perform procedure only if stationary (they might be closing already)
-    if (!tSudMoving || !tNordMoving) {
-      setNord(0);
-      setSud(0);
-    }
-  }
-}
-
-// setup
-// --------------------------------------------------------------------------------------|
-void setup() {
-  pinMode(D1, OUTPUT);
-  pinMode(D2, OUTPUT);
-  pinMode(D6, OUTPUT);
-  pinMode(D7, OUTPUT);
-  pinMode(D8, OUTPUT);
-
-  digitalWrite(D1, 0);
-  digitalWrite(D2, 0);
-  digitalWrite(D6, 0);
-  digitalWrite(D7, 0);
-  digitalWrite(D8, 1);
-
-  Serial.begin(115200);
-  EEPROM.begin(10);
-  setup_wifi();
-  client.setServer(mqtt_server, 1883);
-  client.setCallback(callback);
-  tNordPosition = int(EEPROM.read(0));
-  tSudPosition = int(EEPROM.read(1));
-
-  tNordDuration = int(EEPROM.read(2));
-  tSudDuration = int(EEPROM.read(3));
-
-  upSeconds = EEPROM.read(4);
-  downSeconds = EEPROM.read(5);
+  // Load positions from EEPROM or set to 0 if not valid
+  nord.loadPosition();
+  sud.loadPosition();
 
   httpUpdater.setup(&httpServer);
   httpServer.begin();
 }
 
-// loop
-// ---------------------------------------------------------------------------------------|
-void loop() {
-  // controllo connessione mqtt
-  // -------------------------------------------------------------|
-  if (!client.connected()) {
-    reconnect();
+void loop()
+{
+  // Reconnect to MQTT if connection lost
+  if (!mqtt.isConnected() && mqtt_server[0] != '\0')
+  {
+    mqtt.begin(mqtt_server);
   }
-  client.loop();
+
+  mqtt.loop();
   httpServer.handleClient();
 
-  if (tNordMoving == true) {
-    if (millis() / 1000 > oldMillisNord) {
-      whereInTheWorldIsTenda(tNordActBegin, tNordGoingUp, tNordPosition,
-                             topic_tende_status_nord);
-      oldMillisNord = millis() / 1000;
-    }
-    if ((millis() - tNordActBegin) > (tNordDuration)) {
-      tNordPosition = stopNord();
-    }
-  }
-
-  if (tSudMoving == true) {
-    if (millis() / 1000 > oldMillisNord) {
-      whereInTheWorldIsTenda(tSudActBegin, tSudGoingUp, tSudPosition,
-                             topic_tende_status_sud);
-      oldMillisSud = millis() / 1000;
-    }
-    if ((millis() - tSudActBegin) > (tSudDuration)) {
-      tSudPosition = stopSud();
-    }
-  }
-
-  if (lastMQTT < (millis() - 120000)) {
-    emergencyProcedure();
-  }
-  delay(200);
+  nord.check();
+  sud.check();
 }
