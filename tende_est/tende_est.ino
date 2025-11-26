@@ -93,7 +93,8 @@ public:
   void stop(bool simple = false, bool send = true)
   {
     Serial.println("void stop");
-    if (getPosition() == 100)
+    int curPosition = getPosition();
+    if (curPosition == 100)
     {
       tenda->setState(HACover::CoverState::StateOpen);
     }
@@ -116,7 +117,7 @@ public:
       }
       lastUpdate = millis();
     }
-    startPosition = getPosition();
+    tenda->setPosition(curPosition);
     digitalWrite(pinDown, false);
     digitalWrite(pinUp, false);
 
@@ -173,16 +174,18 @@ public:
     if (tenda->getCurrentState() == HACover::CoverState::StateOpening)
     {
       // Opening = moving up (retracting) = increasing position toward 100
-      return min(int((millis() - startMillis) * 100 / (timeUp * 1000)), 100);
+      int elapsed = (millis() - startMillis) * 100 / (timeUp * 1000);
+      return min(startPosition + elapsed, 100);
     }
     else if (tenda->getCurrentState() == HACover::CoverState::StateClosing)
     {
       // Closing = moving down (extending) = decreasing position toward 0
-      return max(int((millis() - startMillis) * 100 / (timeDown * 1000)), 0);
+      int elapsed = (millis() - startMillis) * 100 / (timeDown * 1000);
+      return max(startPosition - elapsed, 0);
     }
     else
     {
-      return -1;
+      return tenda->getCurrentPosition();
     }
   }
 
