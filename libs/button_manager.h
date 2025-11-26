@@ -347,34 +347,54 @@ public:
   bool analog = false;
   unsigned long debounce = millis();
   uint32_t activationTimer = 0;
+  uint32_t lastReleaseTime = 0;
+  uint8_t clickCount = 0;
   HADeviceTrigger *shortPressTrigger;
   HADeviceTrigger *longPressTrigger;
+  HADeviceTrigger *doublePressTrigger;
+  HADeviceTrigger *triplePressTrigger;
   Pin *pinShort;
   Pin *pinLong;
+  Pin *pinDouble;
+  Pin *pinTriple;
   char _triggerId[32]; // Fixed buffer instead of String
 
   ButtonManager()
       : shortPressTrigger(nullptr),
         longPressTrigger(nullptr),
+        doublePressTrigger(nullptr),
+        triplePressTrigger(nullptr),
         pinShort(nullptr),
-        pinLong(nullptr)
+        pinLong(nullptr),
+        pinDouble(nullptr),
+        pinTriple(nullptr)
   {
     _triggerId[0] = '\0';
   }
 
   ButtonManager(int inPin, bool isAnalog, const char *name)
-      : ButtonManager(inPin, isAnalog, name, nullptr, nullptr) {}
+      : ButtonManager(inPin, isAnalog, name, nullptr, nullptr, nullptr, nullptr) {}
 
   ButtonManager(int inPin, bool isAnalog, const char *name, Pin *pinShort)
-      : ButtonManager(inPin, isAnalog, name, pinShort, nullptr) {}
+      : ButtonManager(inPin, isAnalog, name, pinShort, nullptr, nullptr, nullptr) {}
 
   ButtonManager(int inPin, bool isAnalog, const char *name, Pin *pinShort, Pin *pinLong)
+      : ButtonManager(inPin, isAnalog, name, pinShort, pinLong, nullptr, nullptr) {}
+
+  ButtonManager(int inPin, bool isAnalog, const char *name, Pin *pinShort, Pin *pinLong, Pin *pinDouble)
+      : ButtonManager(inPin, isAnalog, name, pinShort, pinLong, pinDouble, nullptr) {}
+
+  ButtonManager(int inPin, bool isAnalog, const char *name, Pin *pinShort, Pin *pinLong, Pin *pinDouble, Pin *pinTriple)
       : inputPin(inPin),
         analog(isAnalog),
         shortPressTrigger(nullptr),
         longPressTrigger(nullptr),
+        doublePressTrigger(nullptr),
+        triplePressTrigger(nullptr),
         pinShort(pinShort),
-        pinLong(pinLong)
+        pinLong(pinLong),
+        pinDouble(pinDouble),
+        pinTriple(pinTriple)
   {
     pinMode(inputPin, INPUT);
 
@@ -385,6 +405,8 @@ public:
 
     shortPressTrigger = new HADeviceTrigger(HADeviceTrigger::ButtonShortPressType, _triggerId);
     longPressTrigger = new HADeviceTrigger(HADeviceTrigger::ButtonLongPressType, _triggerId);
+    doublePressTrigger = new HADeviceTrigger(HADeviceTrigger::ButtonDoublePressType, _triggerId);
+    triplePressTrigger = new HADeviceTrigger(HADeviceTrigger::ButtonTriplePressType, _triggerId);
   }
 
   ~ButtonManager()
@@ -393,6 +415,10 @@ public:
       delete shortPressTrigger;
     if (longPressTrigger != nullptr)
       delete longPressTrigger;
+    if (doublePressTrigger != nullptr)
+      delete doublePressTrigger;
+    if (triplePressTrigger != nullptr)
+      delete triplePressTrigger;
   }
 
   void check()
@@ -423,14 +449,16 @@ public:
       }
 
       if (pinStatus && !oldPinStatus)
-      { // if pressed and was not pressed
+      { // Button just pressed
         oldPinStatus = pinStatus;
         lock = true;
         activationTimer = millis();
       }
       else if (((millis() - activationTimer) > 400) && lock)
-      { // If still pressed after 400 ms
+      { // If still pressed after 400 ms - LONG PRESS
         lock = false;
+        clickCount = 0; // Reset click count
+        lastReleaseTime = 0;
         Serial.println("Long press");
         if (pinLong)
           pinLong->toggle();
@@ -438,22 +466,65 @@ public:
           longPressTrigger->trigger();
       }
       else if (!pinStatus && oldPinStatus)
-      { // if Let go
+      { // Button just released
         if (lock)
-        { // if still in action
+        { // Was a valid short press (not already triggered as long press)
           oldPinStatus = pinStatus;
           lock = false;
-          Serial.println("Single press");
-          if (pinShort)
-            pinShort->toggle();
-          if (shortPressTrigger)
-            shortPressTrigger->trigger();
+
+          // Check if this is part of a multi-click sequence
+          if (clickCount == 0 || (millis() - lastReleaseTime) <= 400)
+          {
+            // Within multi-click window
+            clickCount++;
+            lastReleaseTime = millis();
+          }
+          else
+          {
+            // Too much time passed, reset count
+            clickCount = 1;
+            lastReleaseTime = millis();
+          }
         }
         else
         {
           oldPinStatus = pinStatus;
         }
       }
+
+      // Check if we should trigger based on click count timeout
+      if (clickCount > 0 && (millis() - lastReleaseTime) > 400)
+      {
+        // Multi-click timeout expired, trigger appropriate action
+        if (clickCount == 1)
+        {
+          Serial.println("Single press");
+          if (pinShort)
+            pinShort->toggle();
+          if (shortPressTrigger)
+            shortPressTrigger->trigger();
+        }
+        else if (clickCount == 2)
+        {
+          Serial.println("Double press");
+          if (pinDouble)
+            pinDouble->toggle();
+          if (doublePressTrigger)
+            doublePressTrigger->trigger();
+        }
+        else if (clickCount >= 3)
+        {
+          Serial.println("Triple press");
+          if (pinTriple)
+            pinTriple->toggle();
+          if (triplePressTrigger)
+            triplePressTrigger->trigger();
+        }
+
+        clickCount = 0; // Reset for next sequence
+        lastReleaseTime = 0;
+      }
+
       debounce = millis();
     }
   }
