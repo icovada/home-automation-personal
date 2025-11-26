@@ -58,7 +58,7 @@ void setup()
   manager[3] = new PinManager(CONTROLLINO_A3, false, "uscita");
   manager[4] = new PinManager(CONTROLLINO_A4, false, "cucina", pins[3]);
   manager[5] = new PinManager(CONTROLLINO_A5, false, "salotto_secondario");
-  manager[6] = new PinManager(CONTROLLINO_A6, false, "esterno_ovest", pins[2]);
+  manager[6] = new PinManager(CONTROLLINO_A6, false, "esterno_ovest_cucina", pins[2], pins[3]);
   manager[7] = new PinManager(CONTROLLINO_IN1, false, "campanello");
 
   Serial.print("Free RAM before: ");
