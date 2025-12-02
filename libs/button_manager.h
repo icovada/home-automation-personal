@@ -349,13 +349,15 @@ public:
   uint32_t activationTimer = 0;
   HADeviceTrigger *shortPressTrigger;
   HADeviceTrigger *longPressTrigger;
+  HADeviceTrigger *longReleaseTrigger;
   Pin *pinShort;
   Pin *pinLong;
-  char _triggerId[32]; // Fixed buffer instead of String
+  char _triggerId[64]; // Fixed buffer instead of String
 
   ButtonManager()
       : shortPressTrigger(nullptr),
         longPressTrigger(nullptr),
+        longReleaseTrigger(nullptr),
         pinShort(nullptr),
         pinLong(nullptr)
   {
@@ -373,6 +375,7 @@ public:
         analog(isAnalog),
         shortPressTrigger(nullptr),
         longPressTrigger(nullptr),
+        longReleaseTrigger(nullptr),
         pinShort(pinShort),
         pinLong(pinLong)
   {
@@ -385,6 +388,7 @@ public:
 
     shortPressTrigger = new HADeviceTrigger(HADeviceTrigger::ButtonShortPressType, _triggerId);
     longPressTrigger = new HADeviceTrigger(HADeviceTrigger::ButtonLongPressType, _triggerId);
+    longReleaseTrigger = new HADeviceTrigger(HADeviceTrigger::ButtonLongReleaseType, _triggerId);
   }
 
   ~ButtonManager()
@@ -393,6 +397,8 @@ public:
       delete shortPressTrigger;
     if (longPressTrigger != nullptr)
       delete longPressTrigger;
+    if (longReleaseTrigger != nullptr)
+      delete longReleaseTrigger;
   }
 
   void check()
@@ -452,6 +458,7 @@ public:
         else
         {
           oldPinStatus = pinStatus;
+          longReleaseTrigger->trigger();
         }
       }
       debounce = millis();
