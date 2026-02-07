@@ -110,7 +110,7 @@ public:
         {
             // Pin has been stable — determine static state
             transitionCount = 0;
-            if (currentPin == LOW)
+            if (currentPin == HIGH)
             {
                 newState = HACover::CoverState::StateClosed;
             }
