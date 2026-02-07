@@ -345,6 +345,7 @@ public:
   bool lock = false;
   bool oldPinStatus = false;
   bool analog = false;
+  bool latching = false;
   unsigned long debounce = millis();
   uint32_t activationTimer = 0;
   HADeviceTrigger *shortPressTrigger;
@@ -370,9 +371,10 @@ public:
   ButtonManager(int inPin, bool isAnalog, const char *name, Pin *pinShort)
       : ButtonManager(inPin, isAnalog, name, pinShort, nullptr) {}
 
-  ButtonManager(int inPin, bool isAnalog, const char *name, Pin *pinShort, Pin *pinLong)
+  ButtonManager(int inPin, bool isAnalog, const char *name, Pin *pinShort, Pin *pinLong, bool latching = false)
       : inputPin(inPin),
         analog(isAnalog),
+        latching(latching),
         shortPressTrigger(nullptr),
         longPressTrigger(nullptr),
         longReleaseTrigger(nullptr),
@@ -426,6 +428,25 @@ public:
       else
       {
         pinStatus = digitalRead(inputPin);
+      }
+
+      if (latching)
+      {
+        if (pinStatus != oldPinStatus)
+        {
+          oldPinStatus = pinStatus;
+          if (pinShort)
+          {
+            if (pinStatus)
+              pinShort->on();
+            else
+              pinShort->off();
+          }
+          if (shortPressTrigger)
+            shortPressTrigger->trigger();
+        }
+        debounce = millis();
+        return;
       }
 
       if (pinStatus && !oldPinStatus)
