@@ -18,6 +18,9 @@ static HASensorNumber *phase2_watts;
 static HASensorNumber *phase3_watts;
 static HASensorNumber *total_watts;
 static HASensorNumber *import_watth;
+static HASensorNumber *phase1_watth;
+static HASensorNumber *phase2_watth;
+static HASensorNumber *phase3_watth;
 
 // Shared strings to avoid RAM duplication
 static const char STR_W[] = "W";
@@ -36,6 +39,9 @@ void configure_eastron_sensors()
   phase3_watts = new HASensorNumber("phase3_watts", HASensorNumber::PrecisionP0);
   total_watts = new HASensorNumber("total_watts", HASensorNumber::PrecisionP0);
   import_watth = new HASensorNumber("import_watth", HASensorNumber::PrecisionP0);
+  phase1_watth = new HASensorNumber("phase1_watth", HASensorNumber::PrecisionP0);
+  phase2_watth = new HASensorNumber("phase2_watth", HASensorNumber::PrecisionP0);
+  phase3_watth = new HASensorNumber("phase3_watth", HASensorNumber::PrecisionP0);
 
   phase1_watts->setName("Fase 1");
   phase1_watts->setUnitOfMeasurement(STR_W);
@@ -66,6 +72,24 @@ void configure_eastron_sensors()
   import_watth->setIcon(STR_ICON_METER);
   import_watth->setDeviceClass(STR_ENERGY);
   import_watth->setStateClass(STR_TOTAL);
+
+  phase1_watth->setName("Fase 1 - Energy");
+  phase1_watth->setUnitOfMeasurement(STR_WH);
+  phase1_watth->setIcon(STR_ICON_METER);
+  phase1_watth->setDeviceClass(STR_ENERGY);
+  phase1_watth->setStateClass(STR_TOTAL);
+
+  phase2_watth->setName("Fase 2 - Energy");
+  phase2_watth->setUnitOfMeasurement(STR_WH);
+  phase2_watth->setIcon(STR_ICON_METER);
+  phase2_watth->setDeviceClass(STR_ENERGY);
+  phase2_watth->setStateClass(STR_TOTAL);
+
+  phase3_watth->setName("Fase 3 - Energy");
+  phase3_watth->setUnitOfMeasurement(STR_WH);
+  phase3_watth->setIcon(STR_ICON_METER);
+  phase3_watth->setDeviceClass(STR_ENERGY);
+  phase3_watth->setStateClass(STR_TOTAL);
 }
 
 // Modbus state machine states
@@ -377,6 +401,9 @@ public:
       return false;
 
     import_watth->setValue(readFloat32(getRegister(0), getRegister(1)) * 1000);
+    phase1_watth->setValue(readFloat32(getRegister(2), getRegister(3)) * 1000);
+    phase2_watth->setValue(readFloat32(getRegister(4), getRegister(5)) * 1000);
+    phase3_watth->setValue(readFloat32(getRegister(6), getRegister(7)) * 1000);
 
     state = MODBUS_IDLE;
     return true;
