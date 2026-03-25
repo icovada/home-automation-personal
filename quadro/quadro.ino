@@ -81,6 +81,7 @@ enum ModbusReadState
   READ_PHASES,
   READ_TOTAL,
   READ_ENERGY,
+  READ_PHASE_ENERGY,
   IDLE
 };
 ModbusReadState modbusState = READ_PHASES;
@@ -116,6 +117,9 @@ void loop()
     case READ_ENERGY:
       modbus.startReadEnergy();
       break;
+    case READ_PHASE_ENERGY:
+      modbus.startReadPhaseEnergy();
+      break;
     case IDLE:
       break;
     }
@@ -144,6 +148,10 @@ void loop()
       break;
     case READ_ENERGY:
       modbus.getEnergy();
+      modbusState = READ_PHASE_ENERGY;
+      break;
+    case READ_PHASE_ENERGY:
+      modbus.getPhaseEnergy();
       modbusState = IDLE;
       break;
     case IDLE:

@@ -242,7 +242,17 @@ public:
   {
     if (state != MODBUS_IDLE)
       return false;
-    sendRequest(0x0048, 8);
+    sendRequest(0x0048, 2);
+    return true;
+  }
+
+  // Start reading phase energy (non-blocking)
+  // Registers 0x015A-0x015F: Phase 1, 2, 3 energy (2 registers each)
+  bool startReadPhaseEnergy()
+  {
+    if (state != MODBUS_IDLE)
+      return false;
+    sendRequest(0x015A, 6);
     return true;
   }
 
@@ -409,13 +419,24 @@ public:
   // Parse energy from response
   bool getEnergy()
   {
-    if (state != MODBUS_PROCESSING || requestCount != 8)
+    if (state != MODBUS_PROCESSING || requestCount != 2)
       return false;
 
     import_watth->setValue(getFloat32(0) * 1000);
-    phase1_watth->setValue(getFloat32(2) * 1000);
-    phase2_watth->setValue(getFloat32(4) * 1000);
-    phase3_watth->setValue(getFloat32(6) * 1000);
+
+    state = MODBUS_IDLE;
+    return true;
+  }
+
+  // Parse phase energy from response (registers 0x015A-0x015F)
+  bool getPhaseEnergy()
+  {
+    if (state != MODBUS_PROCESSING || requestCount != 6)
+      return false;
+
+    phase1_watth->setValue(getFloat32(0) * 1000);
+    phase2_watth->setValue(getFloat32(2) * 1000);
+    phase3_watth->setValue(getFloat32(4) * 1000);
 
     state = MODBUS_IDLE;
     return true;
