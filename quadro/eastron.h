@@ -368,15 +368,27 @@ public:
     return (responseBuffer[offset] << 8) | responseBuffer[offset + 1];
   }
 
+  // Get 32-bit float from two consecutive registers (optimized)
+  float getFloat32(uint8_t index)
+  {
+    if (state != MODBUS_PROCESSING || index + 1 >= requestCount)
+      return 0.0;
+
+    uint8_t offset = 3 + (index * 2);
+    uint16_t reg1 = (responseBuffer[offset] << 8) | responseBuffer[offset + 1];
+    uint16_t reg2 = (responseBuffer[offset + 2] << 8) | responseBuffer[offset + 3];
+    return readFloat32(reg1, reg2);
+  }
+
   // Parse phase powers from response
   bool getPhasePowers()
   {
     if (state != MODBUS_PROCESSING || requestCount != 6)
       return false;
 
-    phase1_watts->setValue(readFloat32(getRegister(0), getRegister(1)));
-    phase2_watts->setValue(readFloat32(getRegister(2), getRegister(3)));
-    phase3_watts->setValue(readFloat32(getRegister(4), getRegister(5)));
+    phase1_watts->setValue(getFloat32(0));
+    phase2_watts->setValue(getFloat32(2));
+    phase3_watts->setValue(getFloat32(4));
 
     state = MODBUS_IDLE;
     return true;
@@ -388,7 +400,7 @@ public:
     if (state != MODBUS_PROCESSING || requestCount != 2)
       return false;
 
-    total_watts->setValue(readFloat32(getRegister(0), getRegister(1)));
+    total_watts->setValue(getFloat32(0));
 
     state = MODBUS_IDLE;
     return true;
@@ -400,10 +412,10 @@ public:
     if (state != MODBUS_PROCESSING || requestCount != 8)
       return false;
 
-    import_watth->setValue(readFloat32(getRegister(0), getRegister(1)) * 1000);
-    phase1_watth->setValue(readFloat32(getRegister(2), getRegister(3)) * 1000);
-    phase2_watth->setValue(readFloat32(getRegister(4), getRegister(5)) * 1000);
-    phase3_watth->setValue(readFloat32(getRegister(6), getRegister(7)) * 1000);
+    import_watth->setValue(getFloat32(0) * 1000);
+    phase1_watth->setValue(getFloat32(2) * 1000);
+    phase2_watth->setValue(getFloat32(4) * 1000);
+    phase3_watth->setValue(getFloat32(6) * 1000);
 
     state = MODBUS_IDLE;
     return true;
