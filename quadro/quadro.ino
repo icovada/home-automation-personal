@@ -14,7 +14,8 @@ ModbusClient modbus(Serial3, 1); // RS485 on Serial3, slave ID 1
 EthernetServer ethServer(80);
 EthernetClient ethMqttClient;
 HADevice device("quadro");
-HAMqtt mqtt(ethMqttClient, device);
+// Increase limit of autodiscovery messages past 24 to 40
+HAMqtt mqtt(ethMqttClient, device, 40);
 char mqtt_server[32] = "";
 
 ButtonManager *manager[INPUT_PIN_SIZE];
