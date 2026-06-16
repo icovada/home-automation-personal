@@ -19,12 +19,10 @@ static const PompePins TP = {
     /* pumpRelay  */ {20, 21},
     /* beaconRelay*/ 22,
     /* sirenRelay */ 23,
-    /* runLamp    */ {24, 25},
     /* faultLamp  */ {26, 27},
     /* lampMin    */ 28,
     /* lampHalf   */ 29,
     /* lampHigh   */ 30,
-    /* lampAlarm  */ 31,
     /* lampPreEmpty*/ 32,
     /* curPin     */ {0, 1},
     /* floatMin   */ 2,
@@ -106,7 +104,7 @@ static void setMode(int p, int mode)
 
 static int ampsToAdc(float a)
 {
-  return (int)lround(ADC_AT_4MA + a / AMP_SPAN_A * (ADC_AT_20MA - ADC_AT_4MA));
+  return (int)lround(ADC_AT_0A + a / AMP_SPAN_A * (ADC_AT_FS - ADC_AT_0A));
 }
 static void setCurrent(int p, float amps) { g_ain[TP.curPin[p]] = ampsToAdc(amps); }
 
@@ -142,7 +140,6 @@ static void t_basic_cycle_and_interlock()
   boot(m);
   fillToHalf(m);
   EXPECT(active() == 0, "lead pump (0) starts on the 1/2 float");
-  EXPECT(g_dout[TP.runLamp[0]] == 1, "pump-1 RUN lamp on");
   EXPECT(g_dout[TP.sirenRelay] == 0 && g_dout[TP.beaconRelay] == 0, "no alarm during a normal run");
   drainBelowMin(m);
   EXPECT(active() == -1, "stops when drained below MIN");

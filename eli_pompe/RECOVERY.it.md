@@ -108,7 +108,7 @@ e poi una riga `[status] …` circa ogni 10 secondi.
 
 ## 9. Ricontrolla la taratura (importante)
 
-I valori di taratura della pinza amperometrica (`ADC_AT_4MA` / `ADC_AT_20MA` in
+I valori di taratura del sensore di corrente (`ADC_AT_0A` / `ADC_AT_FS` in
 `pompe.h`) fanno parte del sorgente, quindi una copia corretta ha già i numeri
 giusti. **Ma verificali:** con una pompa in funzione, il valore `A=` sul seriale
 dovrebbe corrispondere a una pinza amperometrica entro circa 0,5 A. Se è sballato,

@@ -98,7 +98,7 @@ and then a `[status] …` line every ~10 seconds.
 
 ## 9. Re-check calibration (important)
 
-The current-clamp calibration values (`ADC_AT_4MA` / `ADC_AT_20MA` in `pompe.h`)
+The current-sensor calibration values (`ADC_AT_0A` / `ADC_AT_FS` in `pompe.h`)
 are part of the source, so a correct copy already has the right numbers. **But
 verify them:** with a pump running, the Serial `A=` figure should match a clamp
 meter within ~0.5 A. If it's off, redo **MANUAL.md §7 step 2** and **commit the

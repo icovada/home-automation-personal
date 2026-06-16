@@ -6,9 +6,15 @@
 /*
  * PompeManager — duplex sump-pump lift-station controller for CONTROLLINO MAXI.
  *
+ * Indication is mostly the controller's built-in per-channel LEDs: the pump
+ * relay LEDs show RUN, the float input LEDs show the levels, the beacon relay
+ * LED shows the alarm state. Only a few logical states get a dedicated 24 V lamp
+ * (per-pump FAULT, the three level lamps, PRE-EMPTY); externally only the beacon
+ * and siren are wired.
+ *
  * Two pumps share a single discharge pipe, so ONLY ONE may run at a time
  * (hard interlock). The lead pump alternates every successful cycle for even
- * wear. Two Seneca T201 amp clamps (4-20 mA, 0-10 A span) verify each pump is
+ * wear. Two YHDC 0-10 V current sensors (split-core CT, ~0-10 A → 0-10 V) verify each pump is
  * actually drawing normal current. A pump is faulted if its current leaves the
  * normal band after startup, OR if the 1/2 float fails to clear within a max
  * time (level not dropping = clogged / stuck check valve). On fault we switch
@@ -49,20 +55,21 @@
 #define PREEMPTY_ACK_MS     5000UL    // pre-empty button: confirmation-blink window after a press
 #define STATUS_PRINT_MS    10000UL    // periodic status line on Serial
 
-// Current monitoring — Seneca T201: 4-20 mA over a 0-10 A span.
-#define AMP_SPAN_A          10.0f     // amps at 20 mA (full scale)
-#define NORMAL_AMP_MIN       2.0f     // below this (after grace) = not running / dry / tripped
+// Current monitoring — YHDC split-core CT, ~0-10 A → 0-10 V (pick the TST range
+// to match your pump; full scale ≈ 2-3× the running current for good resolution).
+#define AMP_SPAN_A          10.0f     // sensor full-scale amps (= its 10 V point)
+#define NORMAL_AMP_MIN       2.0f     // below this (after grace) = not running / dry / tripped / sensor unplugged
 #define NORMAL_AMP_MAX       8.0f     // above this = jammed / locked rotor
-#define SENSOR_FAULT_AMPS   -1.0f     // reading well below the 4 mA zero = broken current loop
 
-// The CONTROLLINO MAXI analog inputs read 0-24 V full scale (10-bit, ~42.6
-// counts/V) — NOT 0-5 V. Size the burden resistor for that range: ~500 ohm turns
-// 4-20 mA into ~2-10 V (≈85-426 counts), a good span well inside 24 V and within
-// the T201's drive limit (~250 ohm → ~1-5 V works too but uses less of the range;
-// never size it so 20 mA approaches 24 V). The values below are PLACEHOLDERS for a
-// 500 ohm burden — CALIBRATE: read the raw ADC at a known 4 mA and 20 mA, enter here.
-#define ADC_AT_4MA            85      // PLACEHOLDER — measure! (~2 V across 500 ohm)
-#define ADC_AT_20MA          426      // PLACEHOLDER — measure! (~10 V across 500 ohm)
+// The YHDC sensor outputs 0-10 V (0 A → 0 V, full-scale amps → 10 V) into a
+// standard CONTROLLINO MAXI analog input (0-24 V range, ~42.6 counts/V): 0 V ≈ 0
+// counts, 10 V ≈ 426 counts. No burden resistor. The values below are starting
+// points — CALIBRATE: read the raw ADC at 0 A and at a known current, enter them
+// (commit the result). NOTE: a 0-10 V sensor has no "live zero", so a disconnected
+// sensor reads ~0 A → the pump simply faults on under-current (no separate
+// broken-wire detection, unlike a 4-20 mA loop).
+#define ADC_AT_0A              0      // PLACEHOLDER — raw ADC at 0 A (0 V)
+#define ADC_AT_FS            426      // PLACEHOLDER — raw ADC at full scale (AMP_SPAN_A → 10 V)
 
 // Float input electrical sense. true = contact closes to +24 V when water rises
 // (normally-open). Set false for normally-closed floats.
@@ -71,15 +78,13 @@
 // ----------------------------------------------------------------- pin bundle
 struct PompePins
 {
-  uint8_t pumpRelay[2];               // pump switching-relay coils (only one on at a time, enforced in software)
-  uint8_t beaconRelay;                // remote flashing beacon (use a self-flashing one)
+  uint8_t pumpRelay[2];               // pump relay coils; their on-board channel LEDs also show RUN
+  uint8_t beaconRelay;                // remote flashing beacon (its on-board LED shows the alarm state)
   uint8_t sirenRelay;                 // siren (muted by the silence button)
-  uint8_t runLamp[2];                 // per-pump RUN indicator (24 V)
-  uint8_t faultLamp[2];               // per-pump FAULT indicator (24 V)
-  uint8_t lampMin, lampHalf, lampHigh;// level indicators (24 V)
-  uint8_t lampAlarm;                  // panel alarm lamp (24 V, blinks)
+  uint8_t faultLamp[2];               // per-pump FAULT indicator (24 V): steady=temp fault, blink=locked out
+  uint8_t lampMin, lampHalf, lampHigh;// level indicators (24 V); a blink = that float looks broken
   uint8_t lampPreEmpty;               // pre-empty active lamp (24 V, flashes)
-  uint8_t curPin[2];                  // analog inputs from the T201 amp clamps
+  uint8_t curPin[2];                  // analog 0-10 V inputs from the YHDC current sensors
   uint8_t floatMin, floatHalf, floatHigh; // float switch inputs
   uint8_t silence, reset;             // momentary buttons
   uint8_t preEmptyBtn;                // momentary button: pre-empty the tank now
@@ -144,7 +149,6 @@ class PompeManager
   int activePump = -1;                 // -1 none, else 0/1 (single source of truth for the interlock)
   int leadPump = 0;                    // alternates after each successful cycle
   bool faulted[2] = {false, false};
-  bool sensorFault[2] = {false, false};
   bool lockedOut[2] = {false, false}; // permanent fault — needs a manual RESET
   byte retryCount[2] = {0, 0};        // consecutive faults since the last good cycle
   FaultReason faultReason[2] = {F_NONE, F_NONE};
@@ -177,7 +181,6 @@ public:
     for (int p = 0; p < 2; p++)
     {
       pinMode(pins.pumpRelay[p], OUTPUT); digitalWrite(pins.pumpRelay[p], LOW);
-      pinMode(pins.runLamp[p], OUTPUT);   digitalWrite(pins.runLamp[p], LOW);
       pinMode(pins.faultLamp[p], OUTPUT); digitalWrite(pins.faultLamp[p], LOW);
     }
     pinMode(pins.beaconRelay, OUTPUT); digitalWrite(pins.beaconRelay, LOW);
@@ -185,7 +188,6 @@ public:
     pinMode(pins.lampMin, OUTPUT);     digitalWrite(pins.lampMin, LOW);
     pinMode(pins.lampHalf, OUTPUT);    digitalWrite(pins.lampHalf, LOW);
     pinMode(pins.lampHigh, OUTPUT);    digitalWrite(pins.lampHigh, LOW);
-    pinMode(pins.lampAlarm, OUTPUT);   digitalWrite(pins.lampAlarm, LOW);
     pinMode(pins.lampPreEmpty, OUTPUT); digitalWrite(pins.lampPreEmpty, LOW);
 
     minFloat.begin(pins.floatMin);
@@ -202,15 +204,14 @@ public:
     Serial.println(F("PompeManager ready"));
   }
 
-  // Read RMS current (A) for a pump from its 4-20 mA loop. May go slightly
-  // negative below the 4 mA zero (used to detect a broken loop).
+  // Read RMS current (A) for a pump from its 0-10 V YHDC sensor (0 V = 0 A).
   float readAmps(int p)
   {
     long sum = 0;
     for (int i = 0; i < 8; i++)
       sum += analogRead(pins.curPin[p]);
     int adc = sum / 8;
-    return AMP_SPAN_A * (float)(adc - ADC_AT_4MA) / (float)(ADC_AT_20MA - ADC_AT_4MA);
+    return AMP_SPAN_A * (float)(adc - ADC_AT_0A) / (float)(ADC_AT_FS - ADC_AT_0A);
   }
 
   void check()
@@ -262,7 +263,6 @@ public:
       for (int p = 0; p < 2; p++)
       {
         faulted[p] = false;
-        sensorFault[p] = false;
         lockedOut[p] = false;
         retryCount[p] = 0;
         faultReason[p] = F_NONE;
@@ -364,23 +364,10 @@ public:
           else
           {
             float amps = readAmps(p);
-            if (amps < SENSOR_FAULT_AMPS)
-            {
-              // broken 4-20 mA loop: can't trust current, lean on the level timer
-              if (!sensorFault[p])
-              {
-                sensorFault[p] = true;
-                Serial.print(F("Pump "));
-                Serial.print(p + 1);
-                Serial.println(F(": current loop fault (check wiring)"));
-              }
-            }
-            else if (amps < NORMAL_AMP_MIN)
-              raiseFault(p, F_UNDERCURRENT, now);
+            if (amps < NORMAL_AMP_MIN)
+              raiseFault(p, F_UNDERCURRENT, now); // also catches a disconnected sensor (reads ~0 A)
             else if (amps > NORMAL_AMP_MAX)
               raiseFault(p, F_OVERCURRENT, now);
-            else
-              sensorFault[p] = false;
           }
         }
       }
@@ -443,7 +430,8 @@ public:
     // pre-empty lamp flashes while a cycle is engaged or during the post-press ack window
     bool preEmptyLamp = preEmpty || preEmptyAck;
     // advance the shared blink timer while anything that blinks is active
-    if (alarmActive || lockedOut[0] || lockedOut[1] || minFloatBroken || preEmptyLamp)
+    // (locked-out fault lamp, broken-float level lamp, pre-empty lamp)
+    if (lockedOut[0] || lockedOut[1] || minFloatBroken || halfFloatBroken || preEmptyLamp)
     {
       if (now - lastBlink >= ALARM_BLINK_MS)
       {
@@ -454,18 +442,17 @@ public:
     else
       blinkState = false;
 
+    // RUN is shown by each pump relay's own on-board LED — no separate RUN lamp.
     digitalWrite(pins.pumpRelay[0], activePump == 0 ? HIGH : LOW);
     digitalWrite(pins.pumpRelay[1], activePump == 1 ? HIGH : LOW);
 
-    digitalWrite(pins.runLamp[0], activePump == 0 ? HIGH : LOW);
-    digitalWrite(pins.runLamp[1], activePump == 1 ? HIGH : LOW);
     for (int p = 0; p < 2; p++)
     {
       bool lamp;
       if (lockedOut[p])
         lamp = blinkState; // permanent fault → blink (needs manual reset)
       else
-        lamp = faulted[p] || sensorFault[p]; // temporary fault / cooldown → steady
+        lamp = faulted[p]; // temporary fault / cooldown → steady
       digitalWrite(pins.faultLamp[p], lamp ? HIGH : LOW);
     }
 
@@ -475,9 +462,9 @@ public:
     digitalWrite(pins.lampHigh, fHigh ? HIGH : LOW);
 
     // WARNING tier → big red beacon only (an issue worth seeing, but not "run"):
-    // any pump faulted/locked/unmonitored, or a MIN float fault.
-    bool warning = faulted[0] || faulted[1] || sensorFault[0] || sensorFault[1] || minFloatBroken;
-    digitalWrite(pins.lampAlarm, alarmActive ? (blinkState ? HIGH : LOW) : LOW);  // panel lamp: emergency only, blinks
+    // any pump faulted/locked/unmonitored, or a MIN float fault. The beacon relay's
+    // own on-board LED is the alarm-state indicator (no separate panel ALARM lamp).
+    bool warning = faulted[0] || faulted[1] || minFloatBroken;
     digitalWrite(pins.beaconRelay, (alarmActive || warning) ? HIGH : LOW);        // beacon: warning OR emergency
     digitalWrite(pins.sirenRelay, (alarmActive && !alarmSilenced) ? HIGH : LOW);  // siren: emergency only, mutable
     digitalWrite(pins.lampPreEmpty, preEmptyLamp ? (blinkState ? HIGH : LOW) : LOW); // pre-empty: flashes when engaged / acknowledged
@@ -504,7 +491,6 @@ private:
 
     activePump = p;
     startMillis[p] = now;
-    sensorFault[p] = false;
     timerMode = false;
     drainStart = 0;
     Serial.print(F("Pump "));

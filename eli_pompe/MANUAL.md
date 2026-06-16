@@ -26,7 +26,7 @@ Normal cycle: water rises to the **1/2** float → a pump starts → water falls
 the **MIN** float → the pump stops. The next time, the *other* pump runs (they
 take turns).
 
-A **current clamp** (Seneca T201) on each pump tells the controller how many
+A **current sensor** (YHDC SCT010T-D) on each pump tells the controller how many
 amps the pump is drawing. If a running pump draws too little (not actually
 pumping, dry, or tripped), too much (jammed), or fails to lower the water in a
 reasonable time (clogged), the controller declares that pump **faulty**,
@@ -37,17 +37,21 @@ keeps failing it is **locked out** until someone investigates and presses RESET.
 
 ## 2. What's on the panel
 
-**Indicator lamps**
+**Built-in lights on the controller** — the CONTROLLINO has a status LED for
+every input and output. They show normal operation directly (no extra lamps):
+- each **pump relay** LED = that pump is **running**;
+- the three **float input** LEDs = the **water level** (and if a higher one is lit while a lower one is dark, that float is broken);
+- the **beacon relay** LED = the **alarm** state.
+
+**Panel lamps (wired to outputs)** — only the states that aren't obvious from the built-in LEDs:
 
 | Lamp | Meaning |
 |------|---------|
-| Pump 1 / Pump 2 **RUN** | that pump is energised right now |
 | Pump 1 / Pump 2 **FAULT** | **steady** = temporary fault, will retry automatically · **blinking** = locked out, needs RESET |
-| Level **MIN / 1-2 / 3-4** | which float is currently wet · a **blinking** level lamp = that float looks broken |
-| **ALARM** (panel) | blinks during an emergency |
+| Level **MIN / 1-2 / 3-4** | repeat of the water level for at-a-glance reading · a **blinking** level lamp = that float looks broken |
 | **PRE-EMPTY** | flashes while a manual pre-empty drain is running, and for ~5 s after you press the button (to confirm the press) |
 
-**Remote signals**
+**Remote signals (the only external outputs)**
 
 - **Big red beacon** — turns on whenever there's *any* problem (a pump fault, a float fault, or an emergency). "Come and look."
 - **Siren** — sounds only in a real **emergency** (high water, or both pumps unavailable). "Act now."
@@ -55,7 +59,7 @@ keeps failing it is **locked out** until someone investigates and presses RESET.
 **Controls**
 
 - **Manual–Off–Auto** selector per pump (see §6).
-- **SILENCE** button — mutes the **siren**; the beacon and lamps stay on.
+- **SILENCE** button — mutes the **siren**; the beacon stays on.
 - **RESET** button — clears faults and re-enables a locked-out pump (after you've fixed the cause).
 - **PRE-EMPTY** button — drains the tank down now to make room before a storm (see §6).
 
@@ -63,12 +67,11 @@ keeps failing it is **locked out** until someone investigates and presses RESET.
 
 ## 3. What you need
 
-- CONTROLLINO MAXI, powered from 24 V DC.
+- **CONTROLLINO MAXI**, powered from 24 V DC.
 - Two pump switching relays — **socket-mounted Finder relays** (plug-in, so a failed one swaps out without rewiring), sized for the pump's current. A hardware interlock between them is **optional** (see §5.1).
 - 3 float switches (normally-open, closing on water rise). The 3/4 float is optional for now.
-- 2 × **Seneca T201** current transducers (4-20 mA output), one clamped on each pump's supply.
-- 2 × **precision burden resistors** (≈ 500 Ω, 0.1 %) — one per 4-20 mA loop (see §5.3).
-- 24 V indicator lamps (incl. a PRE-EMPTY lamp), a 24 V beacon (self-flashing type recommended) and a siren.
+- 2 × **YHDC SCT010T-D** split-core current sensors (10 A → 0-10 V output, 24 V powered), one clamped on each pump's supply. **No burden resistors** — the 0-10 V output goes straight to an analog input. (Pick the range to match the pump; see §5.3.)
+- 6 × 24 V indicator lamps (3 level, 2 pump-fault, 1 pre-empty), a 24 V beacon (self-flashing type recommended) and a siren. (RUN and level are also shown on the controller's built-in LEDs.)
 - MOA (Manual, Off, Auto) selectors and three momentary push-buttons (Silence, Reset, Pre-empty).
 
 ---
@@ -86,29 +89,27 @@ Wire to the CONTROLLINO MAXI terminals as below (matches the firmware pin map).
 | `R2` | Beacon (big red flashing lamp) |
 | `R3` | Siren |
 
-**Digital outputs (24 V lamps)**
+**Digital outputs (24 V lamps)** — RUN and the alarm state are on the controller's built-in relay LEDs, so no lamps for those.
 
 | Terminal | Lamp |
 |----------|------|
-| `D0` / `D1` | Pump 1 / Pump 2 RUN |
-| `D2` / `D3` | Pump 1 / Pump 2 FAULT |
-| `D4` / `D5` / `D6` | Level MIN / 1-2 / 3-4 |
-| `D7` | Panel ALARM |
-| `D8` | PRE-EMPTY active (flashing) |
+| `D0` / `D1` / `D2` | Level MIN / 1-2 / 3-4 |
+| `D3` / `D4` | Pump 1 / Pump 2 FAULT |
+| `D5` | PRE-EMPTY active (flashing) |
 
 **Inputs**
 
 | Terminal | Input |
 |----------|-------|
-| `A0` / `A1` | Pump 1 / Pump 2 current clamp (T201, 4-20 mA via burden resistor) |
+| `A0` / `A1` | Pump 1 / Pump 2 current sensor (YHDC SCT010T-D, **0-10 V — no burden resistor**) |
 | `A2` / `A3` / `A4` | Float MIN / 1-2 / 3-4 |
 | `A5` | Silence button |
 | `A6` | Reset button |
-| `A7` / `A8` | Pump 1 MANUAL / AUTO (from its MOA selector) |
-| `A9` / `IN0` | Pump 2 MANUAL / AUTO (from its MOA selector) |
-| `IN1` | Pre-empty button |
+| `A7` | Pre-empty button |
+| `A8` / `A9` | Pump 1 MANUAL / AUTO (from its MOA selector) |
+| `IN0` / `IN1` | Pump 2 MANUAL / AUTO (from its MOA selector) |
 
-All 12 inputs are now used — there are **no spare inputs** left.
+All 12 inputs (A0–A9 + IN0/IN1) are used — there are no spare inputs.
 
 ---
 
@@ -134,24 +135,22 @@ contactor-style devices but isn't applicable to plug-in relays.)
 
 ### 5.2 Floats
 Use normally-open floats that **close to +24 V as water rises** (active-high).
-Run the MIN, 1/2 and (optional) 3/4 floats to `A2`, `A3`, `A4`. The 3/4 input may
+Run the MIN, 1/2 and (optional) 3/4 floats to `A0`, `A1`, `A2`. The 3/4 input may
 be left unconnected for now — it reads "dry" and will not cause a false alarm.
 (If you only have normally-closed floats, set `FLOAT_ACTIVE_HIGH` to `false` in
 the firmware.)
 
-### 5.3 Current clamps (Seneca T201) — the only tricky part
-Each T201 outputs **4-20 mA** proportional to its pump's RMS current (set the
-T201's range to **0-10 A**, or adjust `AMP_SPAN_A` in firmware to match). The
-CONTROLLINO MAXI analog inputs read **0-24 V** full scale (NOT 0-5 V), so put a
-**burden resistor across the input to ground** to convert the loop current into a
-voltage that fits inside that range:
-
-- ≈ **500 Ω** gives ~**2-10 V** for 4-20 mA — a good default: good resolution,
-  well inside the 24 V range, and within the T201's drive capability.
-  (≈ 250 Ω → ~1-5 V also works but uses less of the input range.)
-- **Do not** size the burden so that 20 mA approaches 24 V — leave headroom.
-- If the loop wire breaks, the input reads ~0 V; the controller detects this as a
-  "broken current loop" sensor fault.
+### 5.3 Current sensors (YHDC SCT010T-D)
+Each sensor is a split-core (clamp-on) transducer that outputs **0-10 V**
+proportional to its pump's RMS current — **10 A = 10 V** on the SCT010T-D. Clamp
+one around each pump's live wire and run its 0-10 V output **straight to an analog
+input** (`A0` / `A1`) — **no burden resistor**. It's a powered sensor: feed it the
+panel supply (confirm 12 V vs 24 V on the unit). Set `AMP_SPAN_A` in firmware to
+the sensor's full-scale amps (10 for the SCT010T-D); pick the sensor range so the
+pump's running current sits around 30-50% of scale (a 10 A sensor suits a ~4 A
+pump well). Note: a 0-10 V sensor has no "live zero", so a disconnected sensor
+reads ~0 A and the pump simply faults on under-current (there's no separate
+broken-wire detection).
 
 Then **calibrate** (§7).
 
@@ -196,10 +195,10 @@ frees up buffer capacity before heavy rain.
 2. **Calibrate the current clamps** (do this once, per pump):
    - Connect a laptop to the CONTROLLINO USB and open the Arduino Serial Monitor at **115200 baud**. A status line prints every ~10 s, including `A=` (the two pumps' measured amps).
    - With the pump **off**, the reading should sit near **0 A**. With the pump **running at a known load**, compare the displayed amps to a clamp meter.
-   - If they don't match, adjust `ADC_AT_4MA` / `ADC_AT_20MA` in `pompe.h` (these map the raw analog reading to 4 mA and 20 mA). The simplest method: note the raw analog counts at a known 4 mA (pump off) and 20 mA (or full-scale) and enter them. Re-flash and re-check.
+   - If they don't match, adjust `ADC_AT_0A` / `ADC_AT_FS` in `pompe.h` (these map the raw analog reading to 0 A / full scale). The simplest method: note the raw analog count with the pump off (0 A) and at a known running current, and enter them. Re-flash and re-check.
    - Set `NORMAL_AMP_MIN` / `NORMAL_AMP_MAX` to bracket your pump's real running current (default 2-8 A) with some margin.
 3. **Set `DRAIN_TIMER_MS`** to roughly how long a healthy pump takes to drop the level from the 1/2 float to the MIN float — this is used as a backup if the MIN float ever fails.
-4. **Test each pump in MANUAL**, confirm the correct relay pulls in, the RUN lamp lights, and the current reads sensibly.
+4. **Test each pump in MANUAL**, confirm the correct relay pulls in (its built-in relay LED lights) and the current reads sensibly.
 5. **Test AUTO**: raise the floats by manual (or fill the sump) and confirm a pump starts at 1/2 and stops at MIN, and that the **lead pump alternates** each cycle.
 6. **Test the alarm**: trip the 3/4 float (or its input) and confirm beacon **and** siren; press **SILENCE** and confirm the siren stops but the beacon stays.
 7. **Test PRE-EMPTY**: with water between MIN and 1/2, press the button → the PRE-EMPTY lamp flashes and a pump drains to MIN then stops. Press it again with the tank empty → no pump, but the lamp still flashes ~5 s.
@@ -226,11 +225,11 @@ underlying problem isn't fixed, the pump will simply fault again.
 
 | Symptom | Likely cause | Check |
 |---------|--------------|-------|
-| Pump faults immediately (undercurrent) every run | Pump not drawing current | Breaker/overload tripped, motor disconnected, clamp/burden wiring, T201 range |
+| Pump faults immediately (undercurrent) every run | Pump not drawing current, or sensor unplugged | Breaker/overload tripped, motor disconnected, sensor wiring/supply, sensor range |
 | Pump faults on **overcurrent** | Jammed impeller / locked rotor | Mechanical blockage; motor condition |
 | Pump faults as **"not draining"** | Pumps but level won't drop | Clogged intake/impeller, stuck check valve, discharge blocked |
 | A **FAULT lamp blinks** and the pump won't restart | Locked out (too many faults) | Fix the pump, press **RESET** |
-| Current reading wrong on Serial | Not calibrated | Redo §7 step 2 (`ADC_AT_4MA`/`ADC_AT_20MA`) |
+| Current reading wrong on Serial | Not calibrated | Redo §7 step 2 (`ADC_AT_0A`/`ADC_AT_FS`) |
 | Pump won't start though water is high | Selector at OFF, or anti-short-cycle wait, or locked out | Check MOA selector and FAULT lamps |
 | Both pumps idle and beacon/siren on | Both unavailable (faulted/locked/OFF) | Check both FAULT lamps and selectors |
 | Level lamp blinking | Float-consistency fault | Replace the suspect float |

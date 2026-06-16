@@ -10,7 +10,7 @@ the code. For wiring, calibration and day-to-day operation see
 - Two pumps share **one** discharge pipe, so **only one ever runs at a time** (hard interlock).
 - The **lead pump alternates** every completed cycle, so both wear evenly and stay exercised.
 - Float switches: **MIN** (stop / dry-run protection) and **1/2** (start) are wired today; **3/4** (high-water alarm) is pre-wired for later.
-- Two **Seneca T201** clamp transducers (4-20 mA, 0-10 A) measure each pump's current to tell whether it's actually pumping.
+- Two **YHDC SCT010T-D** split-core current sensors (0-10 A → 0-10 V) wire straight into standard analog inputs (no burden resistors) to tell whether each pump is actually pumping.
 - A stuck/failed pump is detected and the controller **switches to the other pump**, retries the bad one after a cooldown, and **locks it out** after repeated failures.
 - A two-tier local alarm (beacon + siren) signals problems; no network needed.
 - A **PRE-EMPTY button** drains the tank to MIN on demand (storm prep), even below the 1/2 float; a dedicated lamp flashes to confirm.
@@ -84,9 +84,10 @@ A running pump is faulted when, after `STARTUP_GRACE_MS`:
 | `F_OVERCURRENT`  | amps `> NORMAL_AMP_MAX` | jammed / locked rotor |
 | `F_INEFFECTIVE`  | 1/2 float still up after `MAX_CLEAR_HALF_MS` | clogged impeller / stuck check valve |
 
-Plus a non-faulting **sensor fault**: a reading below the 4 mA point
-(`< SENSOR_FAULT_AMPS`) means a broken current loop — it's flagged (fault lamp +
-log) and the controller falls back to the level/timer logic for that pump.
+Note: the YHDC 0-10 V sensor has no "live zero", so a **disconnected sensor reads
+~0 A** and is caught by the under-current fault (the pump faults either way) — but
+broken-sensor and not-actually-pumping can't be told apart, and there's no
+separate broken-wire detection (unlike a 4-20 mA loop).
 
 On a fault the pump stops, the other takes over within the dead time, and the
 faulted pump enters a **cooldown** (`FAULT_COOLDOWN_MS`). When the cooldown ends
@@ -99,11 +100,12 @@ completed normal cycle resets that counter.
 | Tier | Drives | Triggers |
 |------|--------|----------|
 | **Warning** | big red **beacon** only | any pump faulted / locked out / unmonitored, or a MIN-float fault |
-| **Emergency** | beacon **+ siren +** blinking panel lamp | 3/4 high-water float, a 1/2-float fault (which only happens at high water), or **both** pumps unavailable while water is demanding |
+| **Emergency** | beacon **+ siren** | 3/4 high-water float, a 1/2-float fault (which only happens at high water), or **both** pumps unavailable while water is demanding |
 
-The **Silence** button mutes the **siren only**; the beacon and panel lamp stay
-on until the condition clears. A **single** pump fault is a warning, not an
-emergency, because the other pump still covers demand.
+The **Silence** button mutes the **siren only**; the beacon stays on until the
+condition clears. A **single** pump fault is a warning, not an emergency, because
+the other pump still covers demand. (There's no separate panel ALARM lamp — the
+beacon relay's own on-board LED is the alarm-state indicator.)
 
 Indicator nuance: a pump's fault lamp is **steady** while it's in a temporary
 fault/cooldown and **blinks** when it's permanently locked out (needs a reset).
@@ -117,27 +119,25 @@ timer mode). The level lamp of the suspect float **blinks**.
 
 ## I/O — pin map (CONTROLLINO MAXI)
 
-Defined in [`eli_pompe.ino`](eli_pompe.ino).
+Defined in [`eli_pompe.ino`](eli_pompe.ino). Most indication is the controller's
+own per-channel LEDs — only the beacon and siren are external devices.
 
 | Function | Pin | Type |
 |----------|-----|------|
-| Pump 1 switching relay (drives Finder coil) | `R0` | relay |
-| Pump 2 switching relay (drives Finder coil) | `R1` | relay |
-| Alarm beacon (remote) | `R2` | relay |
+| Pump 1 / 2 relay (drives Finder coil; **relay LED = RUN**) | `R0` / `R1` | relay |
+| Alarm beacon (remote; **relay LED = alarm state**) | `R2` | relay |
 | Siren | `R3` | relay |
-| Pump 1 / 2 RUN lamp | `D0` / `D1` | 24 V out |
-| Pump 1 / 2 FAULT lamp | `D2` / `D3` | 24 V out |
-| Level MIN / 1-2 / 3-4 lamp | `D4` / `D5` / `D6` | 24 V out |
-| Panel ALARM lamp (blinks) | `D7` | 24 V out |
-| PRE-EMPTY active lamp (flashes) | `D8` | 24 V out |
-| Pump 1 / 2 amp clamp (T201) | `A0` / `A1` | analog in (4-20 mA via burden R) |
+| Level MIN / 1-2 / 3-4 lamp (blink = float broken) | `D0` / `D1` / `D2` | 24 V out |
+| Pump 1 / 2 FAULT lamp (steady=fault, blink=lockout) | `D3` / `D4` | 24 V out |
+| PRE-EMPTY active lamp (flashes) | `D5` | 24 V out |
+| Pump 1 / 2 current sensor (YHDC SCT010T-D) | `A0` / `A1` | analog in (0-10 V; no burden resistor) |
 | Float MIN / 1-2 / 3-4 | `A2` / `A3` / `A4` | digital in |
-| Silence / Reset button | `A5` / `A6` | digital in |
-| Pump 1 MANUAL / AUTO | `A7` / `A8` | digital in |
-| Pump 2 MANUAL / AUTO | `A9` / `IN0` | digital in |
-| PRE-EMPTY button | `IN1` | digital in |
+| Silence / Reset / PRE-EMPTY button | `A5` / `A6` / `A7` | digital in |
+| Pump 1 MANUAL / AUTO | `A8` / `A9` | digital in |
+| Pump 2 MANUAL / AUTO | `IN0` / `IN1` | digital in |
 
-All 12 inputs (A0–A9 + IN0/IN1) are now used — **no spare inputs remain**.
+RUN and water levels are read off the pump-relay / float-input LEDs (no dedicated
+lamps). All 12 inputs (A0–A9 + IN0/IN1) are used — no spare inputs.
 
 Floats/buttons are **active-high** (contact closes to +24 V). MOA is a maintained
 3-position selector wired as two inputs per pump (Manual / Auto; centre Off = both open).
@@ -162,11 +162,10 @@ All at the top of [`pompe.h`](pompe.h). Times in ms.
 | `PREEMPTY_ACK_MS` | 5000 | pre-empty lamp blink window after a button press |
 | `AMP_SPAN_A` | 10.0 | full-scale amps at 20 mA |
 | `NORMAL_AMP_MIN` / `MAX` | 2.0 / 8.0 | healthy running band (A) |
-| `SENSOR_FAULT_AMPS` | -1.0 | below this ⇒ broken loop |
-| `ADC_AT_4MA` / `ADC_AT_20MA` | 85 / 426 | raw counts at 4/20 mA — **calibrate** (MAXI inputs are 0-24 V, ~42.6 counts/V; see MANUAL) |
+| `ADC_AT_0A` / `ADC_AT_FS` | 0 / 426 | raw counts at 0 A (0 V) and full scale (10 V) — **calibrate** (see MANUAL) |
 | `FLOAT_ACTIVE_HIGH` | true | set false for normally-closed floats |
 
-Current scaling: `amps = AMP_SPAN_A * (adc - ADC_AT_4MA) / (ADC_AT_20MA - ADC_AT_4MA)`.
+Current scaling: `amps = AMP_SPAN_A * (adc - ADC_AT_0A) / (ADC_AT_FS - ADC_AT_0A)`.
 
 ## Build & flash
 

@@ -32,19 +32,20 @@ identical one. **Keep this committed to the repo and printed in the drawer.**
 | Item | Spec / model (FILL IN) | Qty | Notes |
 |------|------------------------|-----|-------|
 | Float switches | ___ , **normally-open** (closes on rise) | 2–3 | MIN + 1/2 now; 3/4 optional. NO type ⇒ `FLOAT_ACTIVE_HIGH = true` 🔧 |
-| Current transducers | **Seneca T201**, variant ___ | 2 | Output **4–20 mA**. |
-| → T201 range setting | **set to 0–10 A** | — | **Must equal `AMP_SPAN_A` (10.0)** in firmware 🔧 |
-| Burden resistors | **≈ 500 Ω**, 0.1 %, ≥ 0.5 W | 2 | One per 4–20 mA loop → ~2–10 V into A0/A1. Value feeds the `ADC_AT_4MA/20MA` calibration 🔧 |
+| Current sensors | **YHDC SCT010T-D** (split-core, 10 A → 0–10 V, ±2%, powered) | 2 | 0–10 V output → straight to analog inputs `A0` / `A1`. **No burden resistors.** Confirm supply voltage (12 V / 24 V). |
+| → sensor full-scale range | **10 A** (SCT010T-D) | — | Pick so the pump's ~4 A sits ~30–50% of scale. **Must equal `AMP_SPAN_A` (10.0)** in firmware 🔧 |
 
 ## Indication & alarm
 
+RUN (pump relay LEDs), water level (float input LEDs) and the alarm state (beacon
+relay LED) are read off the controller's **built-in per-channel LEDs** — no lamps
+for those. Only the lamps below are wired.
+
 | Item | Spec / model (FILL IN) | Qty | Notes |
 |------|------------------------|-----|-------|
-| Pump RUN lamps | 24 V, ___ (green?) | 2 | `D0` / `D1` |
-| Pump FAULT lamps | 24 V, ___ (red?) | 2 | `D2` / `D3` |
-| Level lamps (MIN/1-2/3-4) | 24 V, ___ | 3 | `D4` / `D5` / `D6` |
-| Panel ALARM lamp | 24 V, ___ (red?) | 1 | `D7`, blinks |
-| PRE-EMPTY lamp | 24 V, ___ | 1 | `D8`, flashes while a pre-empty drain runs / ~5 s after a press |
+| Level lamps (MIN/1-2/3-4) | 24 V, ___ | 3 | `D0` / `D1` / `D2` (repeat the level for at-a-glance reading; blink = float broken) |
+| Pump FAULT lamps | 24 V, ___ (red?) | 2 | `D3` / `D4` (steady = fault, blink = locked out) |
+| PRE-EMPTY lamp | 24 V, ___ | 1 | `D5`, flashes while a pre-empty drain runs / ~5 s after a press |
 | Remote beacon | 24 V, **self-flashing** | 1 | `R2`. Self-flashing so the relay stays steady (MANUAL §5.4). |
 | Siren / sounder | 24 V, ___ | 1 | `R3` (separate relay so SILENCE mutes it). |
 
@@ -52,8 +53,8 @@ identical one. **Keep this committed to the repo and printed in the drawer.**
 
 | Item | Spec / model (FILL IN) | Qty | Notes |
 |------|------------------------|-----|-------|
-| MOA selector switch | 3-position **maintained** | 2 | Manual / Off / Auto, wired as 2 inputs/pump (A7+A8, A9+IN0). |
-| Push-buttons | momentary, **normally-open** | 3 | SILENCE (`A5`), RESET (`A6`), PRE-EMPTY (`IN1`). |
+| MOA selector switch | 3-position **maintained** | 2 | Manual / Off / Auto, wired as 2 inputs/pump (A6+A7, A8+A9). |
+| Push-buttons | momentary, **normally-open** | 3 | SILENCE (`A3`), RESET (`A4`), PRE-EMPTY (`A5`). |
 | Terminal blocks, wiring, ferrules | — | — | |
 
 ---
@@ -65,9 +66,9 @@ re-run the tests (`cd eli_pompe/tests && make`):
 
 | Hardware | Firmware constant | Current value |
 |----------|-------------------|---------------|
-| T201 full-scale range | `AMP_SPAN_A` | 10.0 A |
+| Sensor full-scale range | `AMP_SPAN_A` | 10.0 A (SCT010T-D) |
 | Pump normal running current | `NORMAL_AMP_MIN` / `NORMAL_AMP_MAX` | 2.0 / 8.0 A |
-| Burden resistor + 4–20 mA zero/span | `ADC_AT_4MA` / `ADC_AT_20MA` | **calibrate on site, then commit** |
+| 0–10 V input zero / full-scale (raw ADC) | `ADC_AT_0A` / `ADC_AT_FS` | **calibrate on site, then commit** (~0 / ~426) |
 | Float contact type (NO/NC) | `FLOAT_ACTIVE_HIGH` | `true` (NO) |
 
 Pin assignments are in `eli_pompe/eli_pompe.ino`; wiring detail in
@@ -86,7 +87,7 @@ Quantities below are *spares to stock* (on top of what's installed).
 | **CONTROLLINO MAXI — PRE-FLASHED** | 1 | medium (re-land wires) | **This is the important one.** Keep it already programmed with this firmware + committed calibration, so swapping needs **no laptop and no Arduino skills** — just move the wires. See below. |
 | Finder pump relay | 2 | **easy** (plug-in) | Socketed → unplug/replug, no rewiring. |
 | Float switch | 2–3 | easy | A few terminals. |
-| Seneca T201 + burden resistor | 2 | easy | Set the new T201 to the **same 0–10 A range**; same burden value. |
+| YHDC SCT010T-D current sensor | 2 | easy | Same model; 0–10 V output straight to the analog input (no burden resistor). |
 | Indicator lamp / beacon / siren | a few | easy | |
 | MOA selector, push-button | 1–2 | easy | |
 | Fuses | several | easy | |
@@ -96,7 +97,7 @@ A blank Controllino in a bag is useless to a non-programmer. To make the swap
 skill-free:
 
 1. **Pre-flash the spare** now with this firmware (see [RECOVERY.md](RECOVERY.md)),
-   including the **calibrated** `ADC_AT_4MA`/`ADC_AT_20MA` values, and label it
+   including the **calibrated** `ADC_AT_0A`/`ADC_AT_FS` values, and label it
    *"eli_pompe — flashed <date>"*.
 2. **Label every wire** at the Controllino terminals (ferrules/tags) so re-landing
    them on the spare is mechanical — match the printed electrical diagram.
