@@ -46,6 +46,11 @@ watches them and warns you if something is wrong. You normally do **nothing**.
 - 📁 Documentation drawer: USB stick + printed **manual** + **electrical diagram**.
 - 💻 Online (GitHub): _________________________________________________
 
+## Spare parts
+- 🧰 A bag of **spares** is next to the panel — a technician can **swap** a broken
+  part instead of repairing it. The spare controller is **pre-programmed**; the
+  pump relays just unplug from their sockets.
+
 ---
 
 ## DO NOT

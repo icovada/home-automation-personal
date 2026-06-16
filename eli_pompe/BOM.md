@@ -71,3 +71,36 @@ re-run the tests (`cd eli_pompe/tests && make`):
 
 Pin assignments are in `eli_pompe/eli_pompe.ino`; wiring detail in
 [MANUAL.md](MANUAL.md) §4–§5.
+
+---
+
+## Spares — the "buy two" bag
+
+Buy a second of everything and keep it in a labelled bag **next to the panel**.
+On failure, swap rather than diagnose — far quicker and needs far less skill.
+Quantities below are *spares to stock* (on top of what's installed).
+
+| Spare | Qty | Swap difficulty | Notes |
+|-------|-----|-----------------|-------|
+| **CONTROLLINO MAXI — PRE-FLASHED** | 1 | medium (re-land wires) | **This is the important one.** Keep it already programmed with this firmware + committed calibration, so swapping needs **no laptop and no Arduino skills** — just move the wires. See below. |
+| Finder pump relay | 2 | **easy** (plug-in) | Socketed → unplug/replug, no rewiring. |
+| Float switch | 2–3 | easy | A few terminals. |
+| Seneca T201 + burden resistor | 2 | easy | Set the new T201 to the **same 0–10 A range**; same burden value. |
+| Indicator lamp / beacon / siren | a few | easy | |
+| MOA selector, push-button | 1–2 | easy | |
+| Fuses | several | easy | |
+
+### Make the spare Controllino a true plug-in spare
+A blank Controllino in a bag is useless to a non-programmer. To make the swap
+skill-free:
+
+1. **Pre-flash the spare** now with this firmware (see [RECOVERY.md](RECOVERY.md)),
+   including the **calibrated** `ADC_AT_4MA`/`ADC_AT_20MA` values, and label it
+   *"eli_pompe — flashed <date>"*.
+2. **Label every wire** at the Controllino terminals (ferrules/tags) so re-landing
+   them on the spare is mechanical — match the printed electrical diagram.
+3. Then a failure is: power off → move the labelled wires to the spare → power on
+   → run the quick checks in [MANUAL.md](MANUAL.md) §7. No PC needed.
+
+When you use the spare, **buy and pre-flash another** so the bag is never empty.
+`RECOVERY.md` is the fallback for when no pre-flashed spare exists.

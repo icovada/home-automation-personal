@@ -8,6 +8,13 @@ square "printer" type — confirm on the unit).
 > This only reprograms the **controller logic**. It does **not** touch the
 > mains/pump wiring. Anything on the power side is an **electrician's** job.
 
+> ✅ **Fastest path — swap, don't flash.** If there's a **pre-flashed spare
+> Controllino** in the parts bag (see [BOM.md](BOM.md) → "Spares"), you don't need
+> any of this: power off, move the **labelled** wires from the dead unit to the
+> spare, power on, and run the checks in [MANUAL.md](MANUAL.md) §7. The steps
+> below are only for **preparing** that spare, or if no pre-flashed spare exists.
+> After using the spare, flash and bag a new one so you're never without.
+
 ---
 
 ## 0. Get the source code
