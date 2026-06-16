@@ -207,8 +207,9 @@ static void t_overwhelmed_warns_not_faults()
   EXPECT(g_dout[TP.sirenRelay] == 0, "not an emergency — siren stays off");
 }
 
-static void t_min_off_anti_short_cycle()
+static void t_start_rate_limit()
 {
+  // ≤20 starts/hour per pump = at least 180 s between a pump's OWN starts.
   PompeManager m(TP);
   boot(m);
   setMode(1, OFF); // isolate pump 0 so nothing else can run
@@ -218,10 +219,22 @@ static void t_min_off_anti_short_cycle()
   drainBelowMin(m);
   EXPECT(active() == -1, "pump 0 stopped");
   setFloats(1, 1, 0); // water comes straight back
-  run(m, 5000);
-  EXPECT(active() == -1, "pump 0 held off by anti-short-cycle (<15s since it stopped)");
-  run(m, 12000);
-  EXPECT(active() == 0, "pump 0 restarts after MIN_OFF_TIME");
+  run(m, 120000, 1000); // < 180 s since pump 0's start
+  EXPECT(active() == -1, "pump 0 held off — not yet 180 s since its last start (rate limit)");
+  run(m, 90000, 1000); // now well past 180 s since that start
+  EXPECT(active() == 0, "pump 0 restarts once the start-rate interval has elapsed");
+}
+
+static void t_exercise_autodrain()
+{
+  // MIN wet but water never reaches 1/2; after 24 h idle the station auto-drains.
+  PompeManager m(TP);
+  boot(m);
+  setFloats(1, 0, 0); // MIN wet, below the 1/2 float → no normal demand
+  run(m, 50000, 5000);
+  EXPECT(active() == -1, "no normal start below the 1/2 float");
+  run(m, 86500000, 10000); // > 24 h with MIN wet and no pump having run
+  EXPECT(active() == 0, "auto-drain exercises a pump after 24 h idle with MIN wet");
 }
 
 static void t_cooldown_autoretry()
@@ -452,7 +465,8 @@ int main()
   RUN(t_overcurrent_fault);
   RUN(t_startup_grace);
   RUN(t_overwhelmed_warns_not_faults);
-  RUN(t_min_off_anti_short_cycle);
+  RUN(t_start_rate_limit);
+  RUN(t_exercise_autodrain);
   RUN(t_cooldown_autoretry);
   RUN(t_lockout_after_repeated_faults_and_reset);
   RUN(t_min_float_fault_timer_mode);

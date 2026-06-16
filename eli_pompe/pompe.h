@@ -51,8 +51,9 @@
                                       // (≈ normal 1/2→MIN drain time; tune on site)
 #define MAX_RUN_MS        900000UL    // dry-run backstop: stop only if still running 15 min AFTER the
                                       // 1/2 float cleared (catches a stuck-high MIN float; never fires in a flood)
-#define MIN_OFF_TIME_MS    15000UL    // anti-short-cycle: min off time before a normal auto start
+#define MIN_START_INTERVAL_MS 180000UL // ≥3 min between a pump's OWN starts → ≤20 starts/hour (pump manual limit)
 #define SWITCH_DEADTIME_MS  1000UL    // dead time between one pump off and the next on
+#define EXERCISE_INTERVAL_MS 86400000UL // MIN wet but no pump started in 24 h → auto-drain to exercise the pumps
 #define FAULT_COOLDOWN_MS 600000UL    // auto-retry a faulted pump after this (10 min)
 #define MAX_CONSECUTIVE_FAULTS  3     // consecutive faults before a pump locks out (manual RESET required)
 #define ALARM_BLINK_MS       500UL    // panel alarm-lamp blink half-period
@@ -158,9 +159,11 @@ class PompeManager
   FaultReason faultReason[2] = {F_NONE, F_NONE};
   unsigned long faultUntil[2] = {0, 0};
   unsigned long startMillis[2] = {0, 0};
-  unsigned long lastStop = 0;             // any pump stop → drives SWITCH_DEADTIME
-  unsigned long pumpLastStop[2] = {0, 0}; // per-pump stop time → drives MIN_OFF_TIME
-  bool everStopped[2] = {false, false};   // no anti-short-cycle delay before a pump's first run
+  unsigned long lastStop = 0;              // any pump stop → drives SWITCH_DEADTIME
+  unsigned long pumpLastStart[2] = {0, 0}; // per-pump START time → drives the ≤20 starts/hour limit
+  bool everStarted[2] = {false, false};    // no rate-limit gate before a pump's first start
+  unsigned long lastStartAny = 0;          // last time ANY pump started → drives the 24 h auto-drain
+  bool faultHandoff = false;               // switching to the other pump after a fault → skip the rate limit
 
   bool alarmActive = false;
   bool alarmSilenced = false;
@@ -388,12 +391,19 @@ public:
         }
       }
 
-      // demand = water reached the 1/2 float, OR a pre-empty drain was requested
-      if (activePump == -1 && (fHalf || preEmpty))
+      // demand: 1/2 float reached, a pre-empty requested, OR the 24 h auto-drain
+      // (MIN wet but no pump has started in EXERCISE_INTERVAL_MS — keep exercised)
+      bool exerciseDue = fMin && (now - lastStartAny >= EXERCISE_INTERVAL_MS);
+      if (activePump == -1 && (fHalf || preEmpty || exerciseDue))
       {
         int p = pickPump(false);
         if (p != -1)
-          tryStart(p, now, true); // normal start honours MIN_OFF_TIME
+        {
+          if (exerciseDue && !fHalf && !preEmpty)
+            Serial.println(F("AUTO-DRAIN: 24h idle with MIN wet — exercising a pump"));
+          if (tryStart(p, now, !faultHandoff)) // fault hand-off skips the rate limit
+            faultHandoff = false;
+        }
       }
     }
 
@@ -494,19 +504,23 @@ public:
   }
 
 private:
-  // Start pump p if the interlock allows it. requireMinOff adds the
-  // anti-short-cycle delay (normal starts); fault hand-off / emergency pass false.
-  bool tryStart(int p, unsigned long now, bool requireMinOff)
+  // Start pump p if the interlock allows it. requireRate applies the per-pump
+  // ≤20 starts/hour limit (normal demand starts); a fault hand-off / emergency
+  // override passes false so the backup / flood response is never delayed.
+  bool tryStart(int p, unsigned long now, bool requireRate)
   {
     if (activePump != -1)
       return false;
     if (now - lastStop < SWITCH_DEADTIME_MS)
       return false; // dead time between any two energisations (interlock spacing)
-    if (requireMinOff && everStopped[p] && (now - pumpLastStop[p] < MIN_OFF_TIME_MS))
-      return false; // anti-short-cycle, per pump — does not delay a fault hand-off to the other pump
+    if (requireRate && everStarted[p] && (now - pumpLastStart[p] < MIN_START_INTERVAL_MS))
+      return false; // ≤20 starts/hour per pump (start-to-start interval)
 
     activePump = p;
     startMillis[p] = now;
+    pumpLastStart[p] = now;
+    everStarted[p] = true;
+    lastStartAny = now;
     timerMode = false;
     drainStart = 0;
     Serial.print(F("Pump "));
@@ -517,19 +531,16 @@ private:
 
   void stop(unsigned long now)
   {
-    if (activePump >= 0)
-    {
-      pumpLastStop[activePump] = now;
-      everStopped[activePump] = true;
-    }
     activePump = -1;
     lastStop = now;
     overwhelmed = false;
+    faultHandoff = false;
   }
 
   void raiseFault(int p, FaultReason r, unsigned long now)
   {
     stop(now);
+    faultHandoff = true; // let the other pump take over without the rate-limit delay
     faulted[p] = true;
     faultReason[p] = r;
     faultUntil[p] = now + FAULT_COOLDOWN_MS;

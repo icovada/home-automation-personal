@@ -24,7 +24,13 @@ Three float switches sit at three heights in the sump:
 
 Normal cycle: water rises to the **1/2** float → a pump starts → water falls to
 the **MIN** float → the pump stops. The next time, the *other* pump runs (they
-take turns).
+take turns). To protect the motors, each pump is limited to **20 starts per hour**
+(at least 3 minutes between its own starts) — so during very rapid cycling a start
+may be held back briefly; that's normal.
+
+**Auto-drain:** if water is sitting above the MIN float but never rises enough to
+trigger a normal start, the station runs a pump **about once a day** to drain it
+and keep both pumps exercised (it won't run if the sump is dry).
 
 A **current sensor** (YHDC SCT010T-D) on each pump tells the controller how many
 amps the pump is drawing. If a running pump draws too little (not actually
@@ -237,7 +243,7 @@ underlying problem isn't fixed, the pump will simply fault again.
 | Beacon on, pump **running**, water staying high (no fault) | Pump can't keep up with inflow, or restricted | Usually just heavy rain — monitor. If it persists in dry weather: clogged intake/impeller, stuck check valve, or blocked discharge |
 | A **FAULT lamp blinks** and the pump won't restart | Locked out (too many faults) | Fix the pump, press **RESET** |
 | Current reading wrong on Serial | Not calibrated | Redo §7 step 2 (`ADC_AT_0A`/`ADC_AT_FS`) |
-| Pump won't start though water is high | Selector at OFF, or anti-short-cycle wait, or locked out | Check MOA selector and FAULT lamps |
+| Pump won't start though water is high | Selector at OFF, start-rate wait (≤20/hr), or locked out | Check MOA selector and FAULT lamps; brief wait is normal between rapid cycles |
 | Both pumps idle and beacon/siren on | Both unavailable (faulted/locked/OFF) | Check both FAULT lamps and selectors |
 | Level lamp blinking | Float-consistency fault | Replace the suspect float |
 | Nothing responds / panel seems frozen | The controller self-resets via watchdog if it ever hangs | If it persists, power-cycle and check Serial log |
@@ -249,6 +255,6 @@ underlying problem isn't fixed, the pump will simply fault again.
 - Periodically confirm both pumps still run (the alternation does this for you, but verify in MANUAL occasionally).
 - Keep float switches and the sump free of debris.
 - Re-check the current calibration after any pump or clamp change.
-- The default timings (10-min retry, 15-s anti-short-cycle, etc.) suit most
+- The default timings (10-min retry, 3-min start-rate limit, 24-h auto-drain, etc.) suit most
   installations; a technician can fine-tune them in `pompe.h` (see
   [README.md](README.md)) and must re-run the test suite afterwards.

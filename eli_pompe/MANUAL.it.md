@@ -26,7 +26,13 @@ Tre interruttori a galleggiante si trovano a tre altezze nel pozzetto:
 
 Ciclo normale: l'acqua sale fino al galleggiante **1/2** → una pompa parte → l'acqua scende fino al
 galleggiante **MIN** → la pompa si ferma. La volta successiva funziona l'*altra* pompa (si
-alternano).
+alternano). Per proteggere i motori, ogni pompa è limitata a **20 avviamenti all'ora**
+(almeno 3 minuti tra un avviamento e l'altro della stessa pompa) — quindi durante cicli molto
+frequenti un avviamento può essere ritardato brevemente; è normale.
+
+**Svuotamento automatico:** se l'acqua resta sopra il galleggiante MIN ma non sale mai
+abbastanza da innescare un avvio normale, la stazione aziona una pompa **circa una volta al giorno**
+per svuotare e mantenere in esercizio entrambe le pompe (non si attiva se il pozzetto è asciutto).
 
 Un **sensore di corrente** (YHDC SCT010T-D) su ciascuna pompa indica al controllore quanti
 ampere assorbe la pompa. Se una pompa in funzione assorbe troppo poco (non sta effettivamente
@@ -240,7 +246,7 @@ problema di fondo non è risolto, la pompa andrà semplicemente di nuovo in guas
 | Lampeggiante acceso, pompa **in marcia**, acqua che resta alta (nessun guasto) | La pompa non riesce a smaltire la portata in ingresso, oppure è ostruita | Di solito è solo pioggia intensa — tieni sotto controllo. Se persiste con tempo asciutto: aspirazione/girante intasata, valvola di ritegno bloccata o mandata ostruita |
 | Una **spia GUASTO lampeggia** e la pompa non riparte | Bloccata (troppi guasti) | Ripara la pompa, premi **RIPRISTINO (RESET)** |
 | Lettura di corrente errata su Serial | Non calibrato | Rifai il passo 2 del §7 (`ADC_AT_0A`/`ADC_AT_FS`) |
-| La pompa non parte anche se l'acqua è alta | Selettore su OFF, o attesa anti-cicli rapidi, o bloccata | Controlla il selettore MOA e le spie GUASTO |
+| La pompa non parte anche se l'acqua è alta | Selettore su OFF, attesa per il limite di avviamenti (≤20/h), o bloccata | Controlla il selettore MOA e le spie GUASTO; una breve attesa tra cicli molto frequenti è normale |
 | Entrambe le pompe ferme e lampeggiante/sirena accesi | Entrambe non disponibili (in guasto/bloccate/OFF) | Controlla entrambe le spie GUASTO e i selettori |
 | Spia di livello lampeggiante | Guasto di coerenza dei galleggianti | Sostituisci il galleggiante sospetto |
 | Niente risponde / il quadro sembra bloccato | Il controllore si auto-resetta tramite watchdog se mai si blocca | Se persiste, spegni e riaccendi e controlla il log su Serial |
@@ -252,6 +258,6 @@ problema di fondo non è risolto, la pompa andrà semplicemente di nuovo in guas
 - Verifica periodicamente che entrambe le pompe funzionino ancora (l'alternanza lo fa per te, ma controlla in MANUALE di tanto in tanto).
 - Mantieni gli interruttori a galleggiante e il pozzetto liberi da detriti.
 - Ricontrolla la calibrazione della corrente dopo qualsiasi cambio di pompa o pinza.
-- Le tempistiche predefinite (ritenta dopo 10 min, anti-cicli rapidi 15 s, ecc.) sono adatte alla maggior parte delle
+- Le tempistiche predefinite (ritenta dopo 10 min, limite di frequenza di avviamento 3 min, svuotamento automatico ogni 24 h, ecc.) sono adatte alla maggior parte delle
   installazioni; un tecnico può affinarle in `pompe.h` (vedi
   [README.md](README.md)) e deve poi rieseguire la suite di test.

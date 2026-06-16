@@ -33,8 +33,9 @@ the same time.
 - **undercurrent** / **overcurrent** faults → switch to the other pump
 - **can't-keep-up**: normal current but 1/2 won't clear → **warning only** (beacon), pump keeps running, not faulted
 - **startup grace** (a low reading right after start does not fault)
-- **fast hand-off**: a fault switches to the backup within the ~1 s dead time, not after the 15 s anti-short-cycle delay
-- **anti-short-cycle** keeps the *same* pump off for `MIN_OFF_TIME` after it stops
+- **fast hand-off**: a fault switches to the backup within the ~1 s dead time, bypassing the start-rate limit
+- **start-rate limit**: a pump won't restart within `MIN_START_INTERVAL_MS` of its own last start (≤20 starts/hour)
+- **daily auto-drain**: MIN wet + no start in 24 h → a pump is exercised
 - **auto-retry** after a cooldown, and **permanent lockout** after `MAX_CONSECUTIVE_FAULTS`, cleared by **RESET**
 - **MIN-float fault** → drain-timer mode (beacon, no siren)
 - **1/2-float fault at high water** → emergency (siren + beacon)

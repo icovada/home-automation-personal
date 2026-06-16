@@ -14,6 +14,7 @@ the code. For wiring, calibration and day-to-day operation see
 - A stuck/failed pump is detected and the controller **switches to the other pump**, retries the bad one after a cooldown, and **locks it out** after repeated failures.
 - A two-tier local alarm (beacon + siren) signals problems; no network needed.
 - A **PRE-EMPTY button** drains the tank to MIN on demand (storm prep), even below the 1/2 float; a dedicated lamp flashes to confirm.
+- **Start-rate limited** to ≤20 starts/hour per pump (pump-manual spec), and a **daily auto-drain** exercises the pumps if MIN is wet but nothing has run in 24 h.
 
 ## Files
 
@@ -162,7 +163,8 @@ All at the top of [`pompe.h`](pompe.h). Times in ms.
 | `MAX_CLEAR_HALF_MS` | 120000 | if 1/2 hasn't cleared within this (current normal) → "can't keep up" **warning** (not a fault) |
 | `DRAIN_TIMER_MS` | 30000 | MIN-fault timer-mode run past the 1/2 opening (≈ normal 1/2→MIN drain time) |
 | `MAX_RUN_MS` | 900000 | absolute single-run cap (safety) |
-| `MIN_OFF_TIME_MS` | 15000 | per-pump anti-short-cycle |
+| `MIN_START_INTERVAL_MS` | 180000 | ≤20 starts/hour per pump (start-to-start); fault hand-off & emergency bypass it |
+| `EXERCISE_INTERVAL_MS` | 86400000 | MIN wet + no start in this long → daily auto-drain / exercise |
 | `SWITCH_DEADTIME_MS` | 1000 | dead time between energisations |
 | `FAULT_COOLDOWN_MS` | 600000 | auto-retry delay (10 min) |
 | `MAX_CONSECUTIVE_FAULTS` | 3 | faults before permanent lockout |
