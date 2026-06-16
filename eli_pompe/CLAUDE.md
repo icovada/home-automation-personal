@@ -17,6 +17,7 @@ then lock out; a local beacon/siren alarms. That's the whole job.
 - [`README.md`](README.md) — architecture, `check()` flow, fault model, tunables table.
 - [`MANUAL.md`](MANUAL.md) — install/wire/calibrate/operate. [`BOM.md`](BOM.md) — parts + spares. [`RECOVERY.md`](RECOVERY.md) — reflash. [`PANIC_CARD.md`](PANIC_CARD.md) — wall card.
 - [`tests/`](tests/) — native host unit tests. **Verify with `cd tests && make`** (expect `64 checks, 0 failures`).
+- **Italian copies:** the four user-facing docs have `*.it.md` courtesy translations (PANIC_CARD/MANUAL/BOM/RECOVERY). **English is authoritative** — when you change a user-facing doc, edit the English `.md` first; the `.it.md` may lag (re-translate it after, see how it was done in chat history / banner says "non autoritativa"). README.md and this CLAUDE.md stay English-only.
 
 ## Repo context
 Multi-controller repo (`quadro/`, `salotto/`, `garage/`, …), each a sketch.

@@ -27,6 +27,10 @@ the code. For wiring, calibration and day-to-day operation see
 | [`BOM.md`](BOM.md) | Parts list + the hardware↔firmware settings that must match. |
 | [`CLAUDE.md`](CLAUDE.md) | Orientation + decision log + invariants — read first when picking this up cold. |
 
+The four user-facing docs have Italian courtesy copies — [`PANIC_CARD.it.md`](PANIC_CARD.it.md),
+[`MANUAL.it.md`](MANUAL.it.md), [`BOM.it.md`](BOM.it.md), [`RECOVERY.it.md`](RECOVERY.it.md).
+**English is authoritative**; edit the English first, the `.it.md` copies may lag.
+
 The sketch deliberately does **not** reuse the repo's shared `libs/`
 (`OutputPin`, `ButtonManager`, `controllino_common.h`): those are coupled to
 ArduinoHA/Ethernet, which a non-networked safety controller shouldn't drag in.
