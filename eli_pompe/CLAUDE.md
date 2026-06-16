@@ -49,6 +49,26 @@ pattern instead (cf. [`../garage/basculante.h`](../garage/basculante.h)).
 - **Calibration** (`ADC_AT_4MA/20MA`) still placeholders — measure on site, commit.
 - Fill-in blanks remain: PANIC_CARD phone numbers, BOM part numbers, GitHub URL.
 
+## Future direction — Home Assistant / MQTT (someday, not now)
+The owner wants to network this eventually to monitor it in Home Assistant. The
+MAXI has the Ethernet hardware and the other controllers already do this
+(ArduinoHA + Ethernet, see [`../libs/controllino_common.h`](../libs/controllino_common.h)
+and e.g. [`../salotto/salotto.ino`](../salotto/salotto.ino)). Keep it **additive
+and report-only** so the safety logic stays network-free and testable:
+- **Do NOT touch `PompeManager`'s control flow.** Add a thin reporting layer in
+  the `.ino` (or a separate header) that *reads* state and publishes it.
+- Add a few `const` getters to `PompeManager` (currently most state is private):
+  `activePump`, per-pump `faulted`/`lockedOut`/amps, the three float levels,
+  `alarmActive`, `leadPump`. That's the only change to `pompe.h` needed.
+- Expose as HA entities: per-pump RUN + FAULT/LOCKED (binary sensors), 3 level
+  binary sensors, ALARM binary sensor, per-pump current `HASensorNumber` (A),
+  optional lead-pump sensor. Optionally remote **SILENCE/RESET** as `HAButton`s.
+- **Never let a network command bypass the single-pump interlock or fault
+  logic** — remote commands are conveniences, the local logic stays authoritative.
+- Reuse the EEPROM JSON network-config pattern from `controllino_common.h`.
+- Adding this pulls in Ethernet/ArduinoHA — so guard it (e.g. a `#define
+  ENABLE_NETWORK`) and keep the host tests building without those libs.
+
 ## Related memory
 User auto-memory has: `controllino-maxi-analog-range` (0–24 V inputs) and
 `cold-spare-resilience-preference` ("buy two", pre-flashed spare).
