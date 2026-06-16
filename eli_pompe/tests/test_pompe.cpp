@@ -191,15 +191,20 @@ static void t_startup_grace()
   EXPECT(active() == 1, "faults once the grace has elapsed");
 }
 
-static void t_ineffective_fault()
+static void t_overwhelmed_warns_not_faults()
 {
+  // Healthy current, but the 1/2 float never clears (inflow >= outflow, e.g. a
+  // storm). The working pump must NOT be faulted/stopped — only a warning.
   PompeManager m(TP);
   boot(m);
-  setFloats(1, 1, 0); // 1/2 stays up: pump draws current but level never drops
+  setFloats(1, 1, 0); // MIN + 1/2 wet, stays that way
+  setCurrent(0, 5.0f); // pump draws normal current → it IS pumping
   run(m, 2600);
   EXPECT(active() == 0, "pump 0 running");
-  run(m, 121000, 500); // beyond MAX_CLEAR_HALF
-  EXPECT(active() == 1, "1/2 not clearing in time → ineffective fault → switch");
+  run(m, 125000, 500); // well beyond MAX_CLEAR_HALF, 1/2 still up, current normal
+  EXPECT(active() == 0, "working pump fighting inflow is NOT faulted or stopped");
+  EXPECT(g_dout[TP.beaconRelay] == 1, "beacon warns (level not dropping)");
+  EXPECT(g_dout[TP.sirenRelay] == 0, "not an emergency — siren stays off");
 }
 
 static void t_min_off_anti_short_cycle()
@@ -446,7 +451,7 @@ int main()
   RUN(t_undercurrent_fault_fast_handoff);
   RUN(t_overcurrent_fault);
   RUN(t_startup_grace);
-  RUN(t_ineffective_fault);
+  RUN(t_overwhelmed_warns_not_faults);
   RUN(t_min_off_anti_short_cycle);
   RUN(t_cooldown_autoretry);
   RUN(t_lockout_after_repeated_faults_and_reset);

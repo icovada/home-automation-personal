@@ -30,7 +30,8 @@ simulated step: the two pump-relay outputs (`R0` / `R1`) are *never* energised a
 the same time.
 
 - normal fill→pump→drain→stop cycle, and lead-pump **alternation**
-- **undercurrent** / **overcurrent** / **ineffective (1/2 not clearing)** faults → switch to the other pump
+- **undercurrent** / **overcurrent** faults → switch to the other pump
+- **can't-keep-up**: normal current but 1/2 won't clear → **warning only** (beacon), pump keeps running, not faulted
 - **startup grace** (a low reading right after start does not fault)
 - **fast hand-off**: a fault switches to the backup within the ~1 s dead time, not after the 15 s anti-short-cycle delay
 - **anti-short-cycle** keeps the *same* pump off for `MIN_OFF_TIME` after it stops

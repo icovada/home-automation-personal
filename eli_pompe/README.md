@@ -72,17 +72,25 @@ window to kill ripple; buttons/MOA use 50 ms and expose a rising edge).
 
 - **Healthy:** stop when the **MIN** float clears, then flip the lead pump.
 - **MIN-float fault** (`1/2` wet while `MIN` reads dry — physically impossible): latch **timer mode** for the run; can't trust MIN, so once the 1/2 float opens, run a further `DRAIN_TIMER_MS` and stop.
-- **Safety backstop:** any single run is capped at `MAX_RUN_MS` (catches e.g. a MIN float stuck *high*).
+- **Dry-run backstop:** a run is capped at `MAX_RUN_MS` **only while the 1/2 float is already clear** (catches a MIN float stuck *high* running the pump dry). It never fires while water is high, so it can't stop a pump fighting a flood.
 
 ### Fault model
 
-A running pump is faulted when, after `STARTUP_GRACE_MS`:
+A running pump is **faulted** (→ stop, switch to the other pump, cooldown) only
+when, after `STARTUP_GRACE_MS`, its **current** leaves the band:
 
 | Reason | Condition | Meaning |
 |--------|-----------|---------|
-| `F_UNDERCURRENT` | amps `< NORMAL_AMP_MIN` | not running / dry / breaker tripped |
+| `F_UNDERCURRENT` | amps `< NORMAL_AMP_MIN` | not running / dry / breaker tripped / sensor unplugged |
 | `F_OVERCURRENT`  | amps `> NORMAL_AMP_MAX` | jammed / locked rotor |
-| `F_INEFFECTIVE`  | 1/2 float still up after `MAX_CLEAR_HALF_MS` | clogged impeller / stuck check valve |
+
+**Not a fault — the "can't keep up" warning:** if a pump draws **normal current**
+(so it *is* moving water) but the **1/2 float still won't clear** within
+`MAX_CLEAR_HALF_MS`, it's losing to inflow (heavy rain) or slightly impaired. With
+only float switches there's no way to tell those apart, and stopping a working
+pump mid-flood is the worst outcome — so the controller **keeps it running and
+just lights the beacon** (`overwhelmed` warning, no siren). It escalates to a real
+emergency on its own if water then reaches the 3/4 float.
 
 Note: the YHDC 0-10 V sensor has no "live zero", so a **disconnected sensor reads
 ~0 A** and is caught by the under-current fault (the pump faults either way) — but
@@ -99,7 +107,7 @@ completed normal cycle resets that counter.
 
 | Tier | Drives | Triggers |
 |------|--------|----------|
-| **Warning** | big red **beacon** only | any pump faulted / locked out / unmonitored, or a MIN-float fault |
+| **Warning** | big red **beacon** only | any pump faulted / locked out, a MIN-float fault, or a pump that **can't keep up** with inflow (running OK, level not dropping) |
 | **Emergency** | beacon **+ siren** | 3/4 high-water float, a 1/2-float fault (which only happens at high water), or **both** pumps unavailable while water is demanding |
 
 The **Silence** button mutes the **siren only**; the beacon stays on until the
@@ -151,7 +159,7 @@ All at the top of [`pompe.h`](pompe.h). Times in ms.
 | `FLOAT_DEBOUNCE_MS` | 2000 | float stability window |
 | `BTN_DEBOUNCE_MS` | 50 | button/MOA debounce |
 | `STARTUP_GRACE_MS` | 5000 | ignore current during inrush/priming |
-| `MAX_CLEAR_HALF_MS` | 120000 | 1/2 float must clear within this, else ineffective fault |
+| `MAX_CLEAR_HALF_MS` | 120000 | if 1/2 hasn't cleared within this (current normal) → "can't keep up" **warning** (not a fault) |
 | `DRAIN_TIMER_MS` | 30000 | MIN-fault timer-mode run past the 1/2 opening (≈ normal 1/2→MIN drain time) |
 | `MAX_RUN_MS` | 900000 | absolute single-run cap (safety) |
 | `MIN_OFF_TIME_MS` | 15000 | per-pump anti-short-cycle |

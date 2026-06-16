@@ -15,13 +15,15 @@
  * Two pumps share a single discharge pipe, so ONLY ONE may run at a time
  * (hard interlock). The lead pump alternates every successful cycle for even
  * wear. Two YHDC 0-10 V current sensors (split-core CT, ~0-10 A → 0-10 V) verify each pump is
- * actually drawing normal current. A pump is faulted if its current leaves the
- * normal band after startup, OR if the 1/2 float fails to clear within a max
- * time (level not dropping = clogged / stuck check valve). On fault we switch
- * to the other pump and auto-retry the faulted one after a cooldown. After
- * MAX_CONSECUTIVE_FAULTS faults without a good cycle in between, a pump locks
- * out permanently (blinking fault lamp) until a manual RESET. If both pumps are
- * unavailable, or water reaches the 3/4 float, the alarm sounds.
+ * actually drawing normal current. A pump is faulted (→ switch + cooldown) ONLY
+ * when its current leaves the normal band after startup (under = not pumping /
+ * dry / tripped; over = jammed). If a pump draws normal current but the 1/2 float
+ * still won't clear within MAX_CLEAR_HALF_MS, the pump is WORKING but losing to
+ * inflow (heavy rain) — that is a WARNING (beacon), never a fault: we keep the
+ * working pump running. After MAX_CONSECUTIVE_FAULTS current-faults without a
+ * good cycle in between, a pump locks out permanently (blinking fault lamp) until
+ * a manual RESET. If both pumps are unavailable, or water reaches the 3/4 float,
+ * the alarm sounds.
  *
  * Float-consistency faults (a higher float active while a lower one reads dry
  * is physically impossible): 3/4 without 1/2 → 1/2 float broken (alarm); 1/2
@@ -43,10 +45,12 @@
 #define FLOAT_DEBOUNCE_MS   2000UL    // float must hold a level this long (kills ripple/chatter)
 #define BTN_DEBOUNCE_MS       50UL    // buttons / MOA selector debounce
 #define STARTUP_GRACE_MS    5000UL    // ignore current band for inrush/priming after start
-#define MAX_CLEAR_HALF_MS 120000UL    // pump must drop level below the 1/2 float within this
+#define MAX_CLEAR_HALF_MS 120000UL    // if 1/2 hasn't cleared within this AND current is normal → WARNING
+                                      // (pump losing to inflow), not a fault — never stops a working pump
 #define DRAIN_TIMER_MS     30000UL    // MIN-float-fault mode: keep running this long after 1/2 opens
                                       // (≈ normal 1/2→MIN drain time; tune on site)
-#define MAX_RUN_MS        900000UL    // absolute safety cap on a single run (15 min, catches a stuck-high MIN float)
+#define MAX_RUN_MS        900000UL    // dry-run backstop: stop only if still running 15 min AFTER the
+                                      // 1/2 float cleared (catches a stuck-high MIN float; never fires in a flood)
 #define MIN_OFF_TIME_MS    15000UL    // anti-short-cycle: min off time before a normal auto start
 #define SWITCH_DEADTIME_MS  1000UL    // dead time between one pump off and the next on
 #define FAULT_COOLDOWN_MS 600000UL    // auto-retry a faulted pump after this (10 min)
@@ -92,7 +96,7 @@ struct PompePins
 };
 
 enum PumpMode  { MODE_OFF, MODE_MANUAL, MODE_AUTO };
-enum FaultReason { F_NONE, F_UNDERCURRENT, F_OVERCURRENT, F_INEFFECTIVE };
+enum FaultReason { F_NONE, F_UNDERCURRENT, F_OVERCURRENT };
 
 // ---------------------------------------------------------- debounced input
 class DebInput
@@ -166,6 +170,7 @@ class PompeManager
   bool prevMinBroken = false;
   bool timerMode = false;       // this run can't trust MIN → stop on a drain timer instead
   unsigned long drainStart = 0; // when the 1/2 float opened during a timer-mode run
+  bool overwhelmed = false;     // running w/ normal current but level not dropping (inflow ≥ outflow) → warning, not fault
   bool preEmpty = false;        // storm pre-drain requested → drain to MIN even below the 1/2 float
   bool preEmptyAck = false;     // confirmation-blink window active after a button press
   unsigned long preEmptyAckStart = 0;
@@ -342,8 +347,11 @@ public:
           // healthy: water drained below the MIN float
           stopNow = true;
         }
-        if (!stopNow && run >= MAX_RUN_MS)
-          stopNow = true; // safety backstop (e.g. a MIN float stuck high)
+        // Hard run cap only while the 1/2 float is already CLEAR (catches a
+        // MIN float stuck high running the pump dry). NEVER stop a pump that's
+        // still fighting high water — that's the worst thing to do in a flood.
+        if (!stopNow && !fHalf && run >= MAX_RUN_MS)
+          stopNow = true;
 
         if (stopNow)
         {
@@ -356,19 +364,27 @@ public:
         }
         else if (run > STARTUP_GRACE_MS)
         {
-          if (fHalf && run > MAX_CLEAR_HALF_MS)
+          // Current is the real "stuck" detector: out of band → fault & switch.
+          float amps = readAmps(p);
+          if (amps < NORMAL_AMP_MIN)
+            raiseFault(p, F_UNDERCURRENT, now); // also catches a disconnected sensor (reads ~0 A)
+          else if (amps > NORMAL_AMP_MAX)
+            raiseFault(p, F_OVERCURRENT, now);
+          else if (fHalf && run > MAX_CLEAR_HALF_MS)
           {
-            // level not dropping below 1/2 in time → ineffective / stuck
-            raiseFault(p, F_INEFFECTIVE, now);
+            // Drawing normal current ⇒ the pump IS moving water, but the 1/2
+            // float still won't clear: it's losing to inflow (heavy rain) or
+            // slightly impaired. Do NOT fault/stop a working pump — just WARN.
+            if (!overwhelmed)
+            {
+              overwhelmed = true;
+              Serial.print(F("Pump "));
+              Serial.print(p + 1);
+              Serial.println(F(": WARNING — running OK but level not dropping (inflow >= outflow?)"));
+            }
           }
           else
-          {
-            float amps = readAmps(p);
-            if (amps < NORMAL_AMP_MIN)
-              raiseFault(p, F_UNDERCURRENT, now); // also catches a disconnected sensor (reads ~0 A)
-            else if (amps > NORMAL_AMP_MAX)
-              raiseFault(p, F_OVERCURRENT, now);
-          }
+            overwhelmed = false;
         }
       }
 
@@ -464,7 +480,7 @@ public:
     // WARNING tier → big red beacon only (an issue worth seeing, but not "run"):
     // any pump faulted/locked/unmonitored, or a MIN float fault. The beacon relay's
     // own on-board LED is the alarm-state indicator (no separate panel ALARM lamp).
-    bool warning = faulted[0] || faulted[1] || minFloatBroken;
+    bool warning = faulted[0] || faulted[1] || minFloatBroken || overwhelmed;
     digitalWrite(pins.beaconRelay, (alarmActive || warning) ? HIGH : LOW);        // beacon: warning OR emergency
     digitalWrite(pins.sirenRelay, (alarmActive && !alarmSilenced) ? HIGH : LOW);  // siren: emergency only, mutable
     digitalWrite(pins.lampPreEmpty, preEmptyLamp ? (blinkState ? HIGH : LOW) : LOW); // pre-empty: flashes when engaged / acknowledged
@@ -508,6 +524,7 @@ private:
     }
     activePump = -1;
     lastStop = now;
+    overwhelmed = false;
   }
 
   void raiseFault(int p, FaultReason r, unsigned long now)
@@ -526,7 +543,6 @@ private:
     {
     case F_UNDERCURRENT: Serial.print(F("undercurrent")); break;
     case F_OVERCURRENT:  Serial.print(F("overcurrent")); break;
-    case F_INEFFECTIVE:  Serial.print(F("not draining")); break;
     default:             Serial.print(F("?")); break;
     }
     Serial.print(F(") #"));
@@ -578,6 +594,8 @@ private:
     Serial.print(timerMode);
     Serial.print(F(" preEmpty="));
     Serial.print(preEmpty);
+    Serial.print(F(" overwhelmed="));
+    Serial.print(overwhelmed);
     Serial.print(F(" A="));
     Serial.print(readAmps(0), 1); Serial.print('/'); Serial.print(readAmps(1), 1);
     Serial.print(F(" alarm="));

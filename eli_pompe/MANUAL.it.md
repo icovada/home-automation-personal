@@ -30,10 +30,17 @@ alternano).
 
 Un **sensore di corrente** (YHDC SCT010T-D) su ciascuna pompa indica al controllore quanti
 ampere assorbe la pompa. Se una pompa in funzione assorbe troppo poco (non sta effettivamente
-pompando, a secco o intervenuta una protezione), troppo (inceppata), oppure non riesce ad abbassare il livello dell'acqua in
-un tempo ragionevole (intasata), il controllore dichiara quella pompa **guasta**,
-passa all'altra pompa e ritenta quella guasta più tardi. Se una pompa
+pompando, a secco o intervenuta una protezione) o troppo (inceppata), il controllore dichiara quella pompa
+**guasta**, passa all'altra pompa e ritenta quella guasta più tardi. Se una pompa
 continua a guastarsi viene **bloccata** finché qualcuno non interviene e non preme RIPRISTINO (RESET).
+
+Se invece una pompa assorbe corrente **normale** ma l'acqua continua a non
+scendere (il galleggiante 1/2 non si libera), la pompa è a posto — sta solo
+**perdendo contro l'afflusso** (per esempio pioggia intensa) o è leggermente
+ostruita. Il controllore **non** la ferma (fermare una pompa funzionante durante
+un temporale sarebbe la cosa peggiore); la mantiene in marcia e accende il
+**lampeggiante come avviso** — non la sirena. Se l'acqua continua a salire fino
+al galleggiante 3/4, quella di per sé diventa una vera emergenza.
 
 ---
 
@@ -214,8 +221,9 @@ libera capacità di riserva prima di una pioggia intensa.
 |-----------|-------------|--------|
 | **Lampeggiante acceso, sirena spenta**, una spia GUASTO fissa | Una pompa è in guasto; l'altra sta coprendo. Ritenterà automaticamente tra ~10 min. | Indaga su quella pompa quando comodo (ostruzione, valvola di ritegno, interruttore). Nessuna fretta. |
 | **Lampeggiante acceso**, una spia GUASTO **lampeggiante** | Quella pompa è **bloccata** dopo guasti ripetuti. | Ripara la pompa, poi premi **RIPRISTINO (RESET)**. |
+| **Lampeggiante acceso, sirena spenta**, una pompa **in marcia**, nessuna spia di guasto | La pompa non riesce a smaltire la portata in ingresso (pioggia intensa) — sta funzionando, non è in guasto. | Tieni sotto controllo. Non è un'emergenza a meno che non degeneri fino alla sirena. |
 | Una **spia di livello lampeggiante** | Quel galleggiante sembra guasto (un galleggiante più alto è bagnato ma questo dice asciutto). | Controlla/sostituisci quell'interruttore a galleggiante. Nel frattempo la stazione continua a funzionare. |
-| **Sirena + lampeggiante**, spia ALLARME lampeggiante | **Emergenza**: acqua alta (3/4) e/o entrambe le pompe non disponibili. | Intervieni **subito**. Premi SILENZIA (SILENCE) per zittire la sirena mentre lavori. Controlla pompe, alimentazione e galleggianti. |
+| **Sirena + lampeggiante** | **Emergenza**: acqua alta (3/4) e/o entrambe le pompe non disponibili. | Intervieni **subito**. Premi SILENZIA (SILENCE) per zittire la sirena mentre lavori. Controlla pompe, alimentazione e galleggianti. |
 
 **Procedura di RIPRISTINO (RESET):** dopo aver risolto la causa, premi **RIPRISTINO (RESET)** una volta. Questo azzera i
 guasti, riabilita qualsiasi pompa bloccata e toglie il silenziamento dell'allarme. Se il
@@ -229,7 +237,7 @@ problema di fondo non è risolto, la pompa andrà semplicemente di nuovo in guas
 |---------|-----------------|----------|
 | La pompa va in guasto subito (sottocorrente) a ogni avvio | La pompa non assorbe corrente, o il sensore è scollegato | Interruttore/protezione termica intervenuti, motore scollegato, cablaggio/alimentazione del sensore, fondo scala del sensore |
 | La pompa va in guasto per **sovracorrente** | Girante inceppata / rotore bloccato | Bloccaggio meccanico; condizione del motore |
-| La pompa va in guasto come **"non sta svuotando"** | Pompa ma il livello non scende | Aspirazione/girante intasata, valvola di ritegno bloccata, mandata ostruita |
+| Lampeggiante acceso, pompa **in marcia**, acqua che resta alta (nessun guasto) | La pompa non riesce a smaltire la portata in ingresso, oppure è ostruita | Di solito è solo pioggia intensa — tieni sotto controllo. Se persiste con tempo asciutto: aspirazione/girante intasata, valvola di ritegno bloccata o mandata ostruita |
 | Una **spia GUASTO lampeggia** e la pompa non riparte | Bloccata (troppi guasti) | Ripara la pompa, premi **RIPRISTINO (RESET)** |
 | Lettura di corrente errata su Serial | Non calibrato | Rifai il passo 2 del §7 (`ADC_AT_0A`/`ADC_AT_FS`) |
 | La pompa non parte anche se l'acqua è alta | Selettore su OFF, o attesa anti-cicli rapidi, o bloccata | Controlla il selettore MOA e le spie GUASTO |

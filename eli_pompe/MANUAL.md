@@ -28,10 +28,16 @@ take turns).
 
 A **current sensor** (YHDC SCT010T-D) on each pump tells the controller how many
 amps the pump is drawing. If a running pump draws too little (not actually
-pumping, dry, or tripped), too much (jammed), or fails to lower the water in a
-reasonable time (clogged), the controller declares that pump **faulty**,
-switches to the other pump, and tries the faulty one again later. If a pump
-keeps failing it is **locked out** until someone investigates and presses RESET.
+pumping, dry, or tripped) or too much (jammed), the controller declares that pump
+**faulty**, switches to the other pump, and tries the faulty one again later. If a
+pump keeps failing it is **locked out** until someone investigates and presses RESET.
+
+If instead a pump is drawing **normal** current but the water still isn't going
+down (the 1/2 float won't clear), the pump is fine — it's just **losing to the
+inflow** (e.g. heavy rain) or slightly restricted. The controller does **not**
+stop it (stopping a working pump would be the worst thing during a storm); it
+keeps pumping and turns on the **beacon as a warning** — not the siren. If the
+water keeps rising to the 3/4 float, that becomes a full emergency on its own.
 
 ---
 
@@ -212,8 +218,9 @@ frees up buffer capacity before heavy rain.
 |---------|---------|--------|
 | **Beacon on, no siren**, one FAULT lamp steady | A pump faulted; the other is covering. It will auto-retry in ~10 min. | Investigate that pump when convenient (blockage, check valve, breaker). No rush. |
 | **Beacon on**, a FAULT lamp **blinking** | That pump is **locked out** after repeated faults. | Fix the pump, then press **RESET**. |
+| **Beacon on, no siren**, a pump **running**, no fault lamp | The pump can't keep up with the inflow (heavy rain) — it's working, not faulted. | Monitor. Not an emergency unless it escalates to the siren. |
 | A **level lamp blinking** | That float looks broken (a higher float is wet but this one says dry). | Check/replace that float switch. The station keeps running meanwhile. |
-| **Siren + beacon**, ALARM lamp blinking | **Emergency**: high water (3/4) and/or both pumps unavailable. | Attend **now**. Press SILENCE to quiet the siren while you work. Check pumps, power, and floats. |
+| **Siren + beacon** | **Emergency**: high water (3/4) and/or both pumps unavailable. | Attend **now**. Press SILENCE to quiet the siren while you work. Check pumps, power, and floats. |
 
 **RESET procedure:** after fixing the cause, press **RESET** once. This clears
 faults, re-enables any locked-out pump, and un-silences the alarm. If the
@@ -227,7 +234,7 @@ underlying problem isn't fixed, the pump will simply fault again.
 |---------|--------------|-------|
 | Pump faults immediately (undercurrent) every run | Pump not drawing current, or sensor unplugged | Breaker/overload tripped, motor disconnected, sensor wiring/supply, sensor range |
 | Pump faults on **overcurrent** | Jammed impeller / locked rotor | Mechanical blockage; motor condition |
-| Pump faults as **"not draining"** | Pumps but level won't drop | Clogged intake/impeller, stuck check valve, discharge blocked |
+| Beacon on, pump **running**, water staying high (no fault) | Pump can't keep up with inflow, or restricted | Usually just heavy rain — monitor. If it persists in dry weather: clogged intake/impeller, stuck check valve, or blocked discharge |
 | A **FAULT lamp blinks** and the pump won't restart | Locked out (too many faults) | Fix the pump, press **RESET** |
 | Current reading wrong on Serial | Not calibrated | Redo §7 step 2 (`ADC_AT_0A`/`ADC_AT_FS`) |
 | Pump won't start though water is high | Selector at OFF, or anti-short-cycle wait, or locked out | Check MOA selector and FAULT lamps |
