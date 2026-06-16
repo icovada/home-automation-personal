@@ -40,15 +40,15 @@ void loop() { pompe.check(); wdt_reset(); }
 All state lives in one `PompeManager` instance. `check()` runs start-to-finish
 every loop (a few hundred µs), never blocks, and uses `millis()` for all timing.
 A small `DebInput` helper debounces each digital input (floats use a long 2 s
-window to kill ripple; buttons/HOA use 50 ms and expose a rising edge).
+window to kill ripple; buttons/MOA use 50 ms and expose a rising edge).
 
 ### `check()` flow
 
-1. **Read & debounce** floats, HOA selectors, buttons, and the per-pump current.
+1. **Read & debounce** floats, MOA selectors, buttons, and the per-pump current.
 2. **RESET** button → clear all faults, lockouts, cooldowns and the silence latch.
 3. **Cooldown expiry** → re-enable a temporarily-faulted pump (locked-out pumps stay down).
-4. **OFF** (HOA) → make sure that pump isn't running.
-5. **HAND** (HOA) → force that pump on (interlock still enforced; if both are in hand, pump 1 wins). Auto/fault logic is bypassed.
+4. **OFF** (MOA) → make sure that pump isn't running.
+5. **MANUAL** (MOA) → force that pump on (interlock still enforced; if both are in manual, pump 1 wins). Auto/fault logic is bypassed.
 6. **AUTO** control:
    - decide when to **stop** (see "Stop logic");
    - if running and past the startup grace, run the **fault checks**;
@@ -121,12 +121,12 @@ Defined in [`eli_pompe.ino`](eli_pompe.ino).
 | Pump 1 / 2 amp clamp (T201) | `A0` / `A1` | analog in (4-20 mA via burden R) |
 | Float MIN / 1-2 / 3-4 | `A2` / `A3` / `A4` | digital in |
 | Silence / Reset button | `A5` / `A6` | digital in |
-| Pump 1 HAND / AUTO | `A7` / `A8` | digital in |
-| Pump 2 HAND / AUTO | `A9` / `IN0` | digital in |
+| Pump 1 MANUAL / AUTO | `A7` / `A8` | digital in |
+| Pump 2 MANUAL / AUTO | `A9` / `IN0` | digital in |
 | spare | `IN1` | — |
 
-Floats/buttons are **active-high** (contact closes to +24 V). HOA is a maintained
-3-position selector wired as two inputs per pump (Hand / Auto; centre Off = both open).
+Floats/buttons are **active-high** (contact closes to +24 V). MOA is a maintained
+3-position selector wired as two inputs per pump (Manual / Auto; centre Off = both open).
 
 ## Tunables
 
@@ -135,7 +135,7 @@ All at the top of [`pompe.h`](pompe.h). Times in ms.
 | Constant | Default | Notes |
 |----------|---------|-------|
 | `FLOAT_DEBOUNCE_MS` | 2000 | float stability window |
-| `BTN_DEBOUNCE_MS` | 50 | button/HOA debounce |
+| `BTN_DEBOUNCE_MS` | 50 | button/MOA debounce |
 | `STARTUP_GRACE_MS` | 5000 | ignore current during inrush/priming |
 | `MAX_CLEAR_HALF_MS` | 120000 | 1/2 float must clear within this, else ineffective fault |
 | `DRAIN_TIMER_MS` | 30000 | MIN-fault timer-mode run past the 1/2 opening (≈ normal 1/2→MIN drain time) |

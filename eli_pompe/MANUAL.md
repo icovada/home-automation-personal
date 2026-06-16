@@ -53,7 +53,7 @@ keeps failing it is **locked out** until someone investigates and presses RESET.
 
 **Controls**
 
-- **Hand–Off–Auto** selector per pump (see §6).
+- **Manual–Off–Auto** selector per pump (see §6).
 - **SILENCE** button — mutes the **siren**; the beacon and lamps stay on.
 - **RESET** button — clears faults and re-enables a locked-out pump (after you've fixed the cause).
 
@@ -148,7 +148,7 @@ will mute both.
 
 ---
 
-## 6. Operating — Hand / Off / Auto
+## 6. Operating — Manual / Off / Auto
 
 Each pump has a 3-position selector:
 
@@ -168,7 +168,7 @@ Each pump has a 3-position selector:
    - Set `NORMAL_AMP_MIN` / `NORMAL_AMP_MAX` to bracket your pump's real running current (default 2-8 A) with some margin.
 3. **Set `DRAIN_TIMER_MS`** to roughly how long a healthy pump takes to drop the level from the 1/2 float to the MIN float — this is used as a backup if the MIN float ever fails.
 4. **Test each pump in MANUAL**, confirm the correct contactor pulls in, the RUN lamp lights, and the current reads sensibly.
-5. **Test AUTO**: raise the floats by hand (or fill the sump) and confirm a pump starts at 1/2 and stops at MIN, and that the **lead pump alternates** each cycle.
+5. **Test AUTO**: raise the floats by manual (or fill the sump) and confirm a pump starts at 1/2 and stops at MIN, and that the **lead pump alternates** each cycle.
 6. **Test the alarm**: trip the 3/4 float (or its input) and confirm beacon **and** siren; press **SILENCE** and confirm the siren stops but the beacon stays.
 7. Leave both selectors at **AUTO**.
 

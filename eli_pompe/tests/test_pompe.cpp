@@ -31,7 +31,7 @@ static const PompePins TP = {
     /* floatHigh  */ 4,
     /* silence    */ 5,
     /* reset      */ 6,
-    /* hand       */ {7, 9},
+    /* manual       */ {7, 9},
     /* autom      */ {8, 10}};
 
 enum { OFF = 0, MANUAL = 1, AUTO = 2 };
@@ -98,7 +98,7 @@ static void setFloats(int mn, int hf, int hi)
 
 static void setMode(int p, int mode)
 {
-  g_din[TP.hand[p]] = (mode == MANUAL) ? 1 : 0;
+  g_din[TP.manual[p]] = (mode == MANUAL) ? 1 : 0;
   g_din[TP.autom[p]] = (mode == AUTO) ? 1 : 0;
 }
 
@@ -125,7 +125,7 @@ static void boot(PompeManager &m)
   setMode(1, AUTO);
   setCurrent(0, 5.0f);
   setCurrent(1, 5.0f);
-  run(m, 400); // settle HOA + clear power-on dead time
+  run(m, 400); // settle MOA + clear power-on dead time
 }
 
 static void fillToHalf(PompeManager &m) { setFloats(1, 1, 0); run(m, 2600); }
@@ -164,7 +164,7 @@ static void t_undercurrent_fault_fast_handoff()
   fillToHalf(m);
   EXPECT(active() == 0, "pump 0 running");
   setCurrent(0, 0.5f); // pump 0 drawing almost nothing → not actually pumping
-  run(m, 6000);        // pass the startup grace, fault, hand off
+  run(m, 6000);        // pass the startup grace, fault, manual off
   EXPECT(active() == 1, "undercurrent → switched to pump 1 within ~1s (NOT after the 15s min-off)");
   EXPECT(g_dout[TP.beaconRelay] == 1, "beacon (warning) on for the faulted pump");
   EXPECT(g_dout[TP.sirenRelay] == 0, "siren stays off — one pump fault is not an emergency");
@@ -188,7 +188,7 @@ static void t_startup_grace()
   setCurrent(0, 0.5f); // low from the very start (inrush/priming window)
   run(m, 2600);
   EXPECT(active() == 0, "pump 0 not faulted while still within the startup grace");
-  run(m, 7000); // past the grace, plus the fault hand-off dead time
+  run(m, 7000); // past the grace, plus the fault manual-off dead time
   EXPECT(active() == 1, "faults once the grace has elapsed");
 }
 
@@ -333,12 +333,12 @@ static void t_hoa_manual_and_interlock()
   setMode(0, MANUAL);
   run(m, 1600); // clear dead time
   EXPECT(active() == 0, "MANUAL runs pump 0 with no water demand");
-  setMode(1, MANUAL); // both in hand
+  setMode(1, MANUAL); // both in manual
   run(m, 1600);
   EXPECT(active() == 0, "both MANUAL → only pump 0 runs (interlock)");
-  setMode(0, OFF); // pump 0 off, pump 1 still in hand
+  setMode(0, OFF); // pump 0 off, pump 1 still in manual
   run(m, 2500);
-  EXPECT(active() == 1, "pump 1 runs in hand once pump 0 is off");
+  EXPECT(active() == 1, "pump 1 runs in manual once pump 0 is off");
 }
 
 static void t_off_disables()

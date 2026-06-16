@@ -16,7 +16,7 @@
  *    its own relay so the Silence button can mute it while the beacon/lamp stay.
  *  - Floats are normally-open, closing to +24 V on rise (FLOAT_ACTIVE_HIGH).
  *  - The 3/4 float input is safe to leave unconnected (reads low = no alarm).
- *  - HOA = maintained 3-position selector wired as 2 inputs/pump (Hand / Auto,
+ *  - MOA = maintained 3-position selector wired as 2 inputs/pump (Manual / Auto,
  *    center Off = neither input active).
  */
 
@@ -41,8 +41,8 @@ PompePins pumpPins = {
     /* floatHigh  */ CONTROLLINO_A4,                   // 3/4 alarm float (future)
     /* silence    */ CONTROLLINO_A5,
     /* reset      */ CONTROLLINO_A6,
-    /* hand       */ {CONTROLLINO_A7, CONTROLLINO_A9}, // pump 1 / pump 2 HOA-Hand
-    /* autom      */ {CONTROLLINO_A8, CONTROLLINO_IN0} // pump 1 / pump 2 HOA-Auto
+    /* manual     */ {CONTROLLINO_A7, CONTROLLINO_A9}, // pump 1 / pump 2 MOA-Manual
+    /* autom      */ {CONTROLLINO_A8, CONTROLLINO_IN0} // pump 1 / pump 2 MOA-Auto
 };
 
 PompeManager pompe(pumpPins);

@@ -38,7 +38,7 @@ step: the two pump-contactor relays are *never* energised at the same time.
 - **1/2-float fault at high water** → emergency (siren + beacon)
 - **high-water override** runs a pump even during a cooldown
 - **silence** mutes the siren only; the beacon stays on
-- **Hand-Off-Auto**: manual run, both-hand interlock, OFF disables
+- **Manual-Off-Auto**: manual run, both-manual interlock, OFF disables
 - level lamps mirror the floats
 
 ## Important: this folder is invisible to the Arduino build

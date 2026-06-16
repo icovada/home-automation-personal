@@ -29,7 +29,7 @@
 // ------------------------------------------------------------------ tunables
 // All times in milliseconds. Adjust on site.
 #define FLOAT_DEBOUNCE_MS   2000UL    // float must hold a level this long (kills ripple/chatter)
-#define BTN_DEBOUNCE_MS       50UL    // buttons / HOA selector debounce
+#define BTN_DEBOUNCE_MS       50UL    // buttons / MOA selector debounce
 #define STARTUP_GRACE_MS    5000UL    // ignore current band for inrush/priming after start
 #define MAX_CLEAR_HALF_MS 120000UL    // pump must drop level below the 1/2 float within this
 #define DRAIN_TIMER_MS     30000UL    // MIN-float-fault mode: keep running this long after 1/2 opens
@@ -74,7 +74,7 @@ struct PompePins
   uint8_t curPin[2];                  // analog inputs from the T201 amp clamps
   uint8_t floatMin, floatHalf, floatHigh; // float switch inputs
   uint8_t silence, reset;             // momentary buttons
-  uint8_t hand[2], autom[2];          // HOA selector: 2 inputs/pump (Hand / Auto, neither = Off)
+  uint8_t manual[2], autom[2];        // MOA selector: 2 inputs/pump (Manual / Auto, neither = Off)
 };
 
 enum PumpMode  { MODE_OFF, MODE_MANUAL, MODE_AUTO };
@@ -182,7 +182,7 @@ public:
     resetBtn.begin(pins.reset, true);
     for (int p = 0; p < 2; p++)
     {
-      manualInput[p].begin(pins.hand[p], true);
+      manualInput[p].begin(pins.manual[p], true);
       autoInput[p].begin(pins.autom[p], true);
     }
     Serial.println(F("PompeManager ready"));
@@ -259,16 +259,16 @@ public:
       }
 
     // --- 5. MANUAL override (manual run; interlock still enforced) ---
-    int handPump = (mode[0] == MODE_MANUAL) ? 0 : (mode[1] == MODE_MANUAL ? 1 : -1);
+    int manualPump = (mode[0] == MODE_MANUAL) ? 0 : (mode[1] == MODE_MANUAL ? 1 : -1);
 
-    if (handPump != -1)
+    if (manualPump != -1)
     {
-      if (activePump != handPump)
+      if (activePump != manualPump)
       {
         if (activePump != -1)
-          stop(now);                 // shut the other one down first
+          stop(now);                    // shut the other one down first
         else
-          tryStart(handPump, now, false); // start after dead time
+          tryStart(manualPump, now, false); // start after dead time
       }
     }
     else
