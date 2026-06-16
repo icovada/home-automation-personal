@@ -6,9 +6,9 @@ each pump's electrical current to detect a stuck or failed pump, switches to the
 healthy pump automatically, and raises a local alarm when something needs
 attention. It is a **standalone** controller (no network/Wi-Fi).
 
-> ⚠️ **Safety.** Pump motors run on mains voltage. All mains wiring, contactors
-> and motor protection must be installed by a qualified electrician and comply
-> with local regulations. The controller switches **contactor coils and signal
+> ⚠️ **Safety.** Pump motors run on mains voltage. All mains wiring, switching
+> relays and motor protection must be installed by a qualified electrician and
+> comply with local regulations. The controller drives **relay coils and signal
 > circuits only** — it does not switch motor current directly. Always isolate
 > power before wiring.
 
@@ -62,7 +62,7 @@ keeps failing it is **locked out** until someone investigates and presses RESET.
 ## 3. What you need
 
 - CONTROLLINO MAXI, powered from 24 V DC.
-- Two pump **contactors** with a **mechanical/electrical interlock** between them (required — see §5).
+- Two pump switching relays — **socket-mounted Finder relays** (plug-in, so a failed one swaps out without rewiring), sized for the pump's current. A hardware interlock between them is **optional** (see §5.1).
 - 3 float switches (normally-open, closing on water rise). The 3/4 float is optional for now.
 - 2 × **Seneca T201** current transducers (4-20 mA output), one clamped on each pump's supply.
 - 2 × **precision burden resistors** (≈ 500 Ω, 0.1 %) — one per 4-20 mA loop (see §5.3).
@@ -79,8 +79,8 @@ Wire to the CONTROLLINO MAXI terminals as below (matches the firmware pin map).
 
 | Terminal | Connect to |
 |----------|------------|
-| `R0` | Pump 1 contactor coil |
-| `R1` | Pump 2 contactor coil |
+| `R0` | Pump 1 switching-relay coil (Finder) |
+| `R1` | Pump 2 switching-relay coil (Finder) |
 | `R2` | Beacon (big red flashing lamp) |
 | `R3` | Siren |
 
@@ -109,12 +109,23 @@ Wire to the CONTROLLINO MAXI terminals as below (matches the firmware pin map).
 
 ## 5. Wiring notes
 
-### 5.1 Pump contactors — interlock is mandatory
-The two pumps must never run together (single pipe). The firmware guarantees
-this in software, **but you must also wire a hardware interlock** between the two
-contactors (mechanical interlock kit or each contactor's NC auxiliary in the
-other's coil circuit). Treat the software as the primary control and the
-hardware interlock as the safety backstop.
+### 5.1 Pump switching relays — interlock is optional
+Only one pump should run at a time (they share one discharge pipe). **The
+firmware guarantees this in software**: it only ever commands one pump on, and
+the test suite checks the two outputs are never energised together. Running both
+at once only makes them fight over the pipe and move less water — it does not
+damage anything — so a hardware interlock is **optional belt-and-suspenders**,
+not required.
+
+This build uses **socket-mounted Finder relays** on `R0` / `R1`, chosen so a
+failed relay plugs out and back in without rewiring. Size each relay for the
+pump's running **and inrush** current (a motor's start surge is several times its
+running current).
+
+If you ever want the extra insurance, the cheapest option is an **electrical
+interlock**: wire each relay's NC auxiliary/spare contact into the other's coil
+feed so one energising drops the other. (A mechanical interlock bar exists for
+contactor-style devices but isn't applicable to plug-in relays.)
 
 ### 5.2 Floats
 Use normally-open floats that **close to +24 V as water rises** (active-high).
@@ -167,7 +178,7 @@ Each pump has a 3-position selector:
    - If they don't match, adjust `ADC_AT_4MA` / `ADC_AT_20MA` in `pompe.h` (these map the raw analog reading to 4 mA and 20 mA). The simplest method: note the raw analog counts at a known 4 mA (pump off) and 20 mA (or full-scale) and enter them. Re-flash and re-check.
    - Set `NORMAL_AMP_MIN` / `NORMAL_AMP_MAX` to bracket your pump's real running current (default 2-8 A) with some margin.
 3. **Set `DRAIN_TIMER_MS`** to roughly how long a healthy pump takes to drop the level from the 1/2 float to the MIN float — this is used as a backup if the MIN float ever fails.
-4. **Test each pump in MANUAL**, confirm the correct contactor pulls in, the RUN lamp lights, and the current reads sensibly.
+4. **Test each pump in MANUAL**, confirm the correct relay pulls in, the RUN lamp lights, and the current reads sensibly.
 5. **Test AUTO**: raise the floats by manual (or fill the sump) and confirm a pump starts at 1/2 and stops at MIN, and that the **lead pump alternates** each cycle.
 6. **Test the alarm**: trip the 3/4 float (or its input) and confirm beacon **and** siren; press **SILENCE** and confirm the siren stops but the beacon stays.
 7. Leave both selectors at **AUTO**.

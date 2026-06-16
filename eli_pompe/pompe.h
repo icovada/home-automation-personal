@@ -64,7 +64,7 @@
 // ----------------------------------------------------------------- pin bundle
 struct PompePins
 {
-  uint8_t pumpRelay[2];               // contactor coils (interlocked: one at a time)
+  uint8_t pumpRelay[2];               // pump switching-relay coils (only one on at a time, enforced in software)
   uint8_t beaconRelay;                // remote flashing beacon (use a self-flashing one)
   uint8_t sirenRelay;                 // siren (muted by the silence button)
   uint8_t runLamp[2];                 // per-pump RUN indicator (24 V)

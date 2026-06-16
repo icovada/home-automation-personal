@@ -25,8 +25,9 @@ Exit code is non-zero if anything fails, so it drops straight into CI.
 
 ## What's covered
 
-Every test also asserts the **hard interlock** invariant on every simulated
-step: the two pump-contactor relays are *never* energised at the same time.
+Every test also asserts the **single-pump interlock** invariant on every
+simulated step: the two pump-relay outputs (`R0` / `R1`) are *never* energised at
+the same time.
 
 - normal fill→pump→drain→stop cycle, and lead-pump **alternation**
 - **undercurrent** / **overcurrent** / **ineffective (1/2 not clearing)** faults → switch to the other pump

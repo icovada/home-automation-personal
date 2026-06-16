@@ -7,8 +7,9 @@
  * 0-10 A) monitor each pump. See pompe.h for the control logic and tunables.
  *
  * Wiring notes:
- *  - Pump contactors MUST also have a mechanical/electrical interlock as a
- *    hardware backstop to the software single-pump interlock.
+ *  - R0/R1 drive socket-mounted Finder relays (swap without rewiring). Only one
+ *    pump is ever commanded on (software interlock); a hardware interlock is
+ *    optional — running both only wastes flow on the shared pipe (see MANUAL §5.1).
  *  - The MAXI analog inputs read 0-24 V full scale (NOT 0-5 V). Feed the T201
  *    4-20 mA loops into A0/A1 through a burden resistor to ground (~500 ohm →
  *    ~2-10 V); calibrate ADC_AT_4MA / ADC_AT_20MA in pompe.h on the bench.
@@ -26,7 +27,7 @@
 
 // ----- pin map (CONTROLLINO MAXI) -----
 PompePins pumpPins = {
-    /* pumpRelay  */ {CONTROLLINO_R0, CONTROLLINO_R1}, // pump 1 / pump 2 contactors
+    /* pumpRelay  */ {CONTROLLINO_R0, CONTROLLINO_R1}, // pump 1 / pump 2 switching relays
     /* beaconRelay*/ CONTROLLINO_R2,                   // remote flashing beacon
     /* sirenRelay */ CONTROLLINO_R3,                   // siren (mutable)
     /* runLamp    */ {CONTROLLINO_D0, CONTROLLINO_D1}, // pump RUN lamps

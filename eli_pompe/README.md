@@ -21,6 +21,10 @@ the code. For wiring, calibration and day-to-day operation see
 | [`eli_pompe.ino`](eli_pompe.ino) | Sketch entry point: pin map, `setup()`/`loop()`, watchdog. Thin. |
 | [`pompe.h`](pompe.h) | `PompeManager` — all the control logic and tunables. The real code. |
 | [`tests/`](tests/) | Native host unit tests (run on your PC, not the board). See [tests/README.md](tests/README.md). |
+| [`MANUAL.md`](MANUAL.md) | Installer/operator manual: wiring, calibration, operation, troubleshooting. |
+| [`PANIC_CARD.md`](PANIC_CARD.md) | One-page wall card: what the lights/siren mean and who to call. |
+| [`RECOVERY.md`](RECOVERY.md) | Step-by-step reflash of a replacement Controllino (for an Arduino novice). |
+| [`BOM.md`](BOM.md) | Parts list + the hardware↔firmware settings that must match. |
 
 The sketch deliberately does **not** reuse the repo's shared `libs/`
 (`OutputPin`, `ButtonManager`, `controllino_common.h`): those are coupled to
@@ -110,8 +114,8 @@ Defined in [`eli_pompe.ino`](eli_pompe.ino).
 
 | Function | Pin | Type |
 |----------|-----|------|
-| Pump 1 contactor | `R0` | relay |
-| Pump 2 contactor | `R1` | relay |
+| Pump 1 switching relay (drives Finder coil) | `R0` | relay |
+| Pump 2 switching relay (drives Finder coil) | `R1` | relay |
 | Alarm beacon (remote) | `R2` | relay |
 | Siren | `R3` | relay |
 | Pump 1 / 2 RUN lamp | `D0` / `D1` | 24 V out |
