@@ -25,6 +25,7 @@ the code. For wiring, calibration and day-to-day operation see
 | [`PANIC_CARD.md`](PANIC_CARD.md) | One-page wall card: what the lights/siren mean and who to call. |
 | [`RECOVERY.md`](RECOVERY.md) | Step-by-step reflash of a replacement Controllino (for an Arduino novice). |
 | [`BOM.md`](BOM.md) | Parts list + the hardware↔firmware settings that must match. |
+| [`CLAUDE.md`](CLAUDE.md) | Orientation + decision log + invariants — read first when picking this up cold. |
 
 The sketch deliberately does **not** reuse the repo's shared `libs/`
 (`OutputPin`, `ButtonManager`, `controllino_common.h`): those are coupled to
