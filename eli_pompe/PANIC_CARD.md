@@ -20,14 +20,16 @@ watches them and warns you if something is wrong. You normally do **nothing**.
 | **Pump FAULT light STEADY** | That pump tripped; it will try again automatically. | Watch it. If it keeps happening, call the plumber. |
 | **Pump FAULT light BLINKING** | That pump has given up (too many failures). | Get the pump fixed, then press **RESET**. |
 | A **water-level light BLINKING** | A float switch looks broken. | Call the plumber; the system keeps working meanwhile. |
+| **PRE-EMPTY light FLASHING** | Someone pressed PRE-EMPTY; the tank is being drained on purpose. | Normal. Nothing to do. |
 | Nothing lit, pumps quiet | All normal. | Nothing. |
 
 ---
 
-## The two buttons
+## The three buttons
 
 - **SILENCE** — turns the **siren** off. The red light stays on. Use it so you can think; it does **not** fix anything.
 - **RESET** — press **after a pump has been repaired** to put it back in service. If the problem isn't fixed, it will just fault again.
+- **PRE-EMPTY** — press **before a big storm** to pump the tank down now and make room. The **PRE-EMPTY light flashes** to confirm; a pump runs until the tank is low, then stops on its own. Safe to use any time.
 
 ## The selector switches (one per pump) — leave on **AUTO**
 - **AUTO** = normal (leave it here).

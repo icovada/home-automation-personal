@@ -19,6 +19,9 @@
  *  - The 3/4 float input is safe to leave unconnected (reads low = no alarm).
  *  - MOA = maintained 3-position selector wired as 2 inputs/pump (Manual / Auto,
  *    center Off = neither input active).
+ *  - PRE-EMPTY: momentary button on IN1 drains the tank to MIN now (storm prep);
+ *    the lamp on D8 flashes while running / for 5 s after any press. After this,
+ *    NO spare inputs remain (A0-A9 + IN0 + IN1 all used).
  */
 
 #include <Controllino.h>
@@ -36,12 +39,14 @@ PompePins pumpPins = {
     /* lampHalf   */ CONTROLLINO_D5,
     /* lampHigh   */ CONTROLLINO_D6,
     /* lampAlarm  */ CONTROLLINO_D7,                   // panel alarm lamp (blinks)
+    /* lampPreEmpty*/ CONTROLLINO_D8,                  // pre-empty active lamp (flashes)
     /* curPin     */ {CONTROLLINO_A0, CONTROLLINO_A1}, // T201 amp clamps (4-20 mA)
     /* floatMin   */ CONTROLLINO_A2,
     /* floatHalf  */ CONTROLLINO_A3,
     /* floatHigh  */ CONTROLLINO_A4,                   // 3/4 alarm float (future)
     /* silence    */ CONTROLLINO_A5,
     /* reset      */ CONTROLLINO_A6,
+    /* preEmptyBtn*/ CONTROLLINO_IN1,                  // storm pre-drain button (last spare input)
     /* manual     */ {CONTROLLINO_A7, CONTROLLINO_A9}, // pump 1 / pump 2 MOA-Manual
     /* autom      */ {CONTROLLINO_A8, CONTROLLINO_IN0} // pump 1 / pump 2 MOA-Auto
 };

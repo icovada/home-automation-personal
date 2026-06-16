@@ -48,6 +48,7 @@ stampata nel cassetto.**
 | Spie GUASTO pompa | 24 V, ___ (rosso?) | 2 | `D2` / `D3` |
 | Spie livello (MIN/1-2/3-4) | 24 V, ___ | 3 | `D4` / `D5` / `D6` |
 | Spia ALLARME quadro | 24 V, ___ (rosso?) | 1 | `D7`, lampeggia |
+| Spia PRE-SVUOTAMENTO | 24 V, ___ | 1 | `D8`, lampeggia durante un pre-svuotamento / per ~5 s dopo la pressione |
 | Lampeggiante remoto | 24 V, **autolampeggiante** | 1 | `R2`. Autolampeggiante affinché il relè resti fisso (MANUAL §5.4). |
 | Sirena / avvisatore acustico | 24 V, ___ | 1 | `R3` (relè separato così SILENCE la silenzia). |
 
@@ -56,7 +57,7 @@ stampata nel cassetto.**
 | Voce | Specifica / modello (DA COMPILARE) | Q.tà | Note |
 |------|------------------------------------|------|------|
 | Selettore MOA | 3 posizioni **stabili** | 2 | Manuale / Off / Auto, cablato come 2 ingressi/pompa (A7+A8, A9+IN0). |
-| Pulsanti | momentanei, **normalmente aperti** | 2 | SILENCE (`A5`), RESET (`A6`). |
+| Pulsanti | momentanei, **normalmente aperti** | 3 | SILENCE (`A5`), RESET (`A6`), PRE-SVUOTAMENTO (`IN1`). |
 | Morsettiere, cablaggio, ferrule | — | — | |
 
 ---

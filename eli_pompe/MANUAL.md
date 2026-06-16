@@ -45,6 +45,7 @@ keeps failing it is **locked out** until someone investigates and presses RESET.
 | Pump 1 / Pump 2 **FAULT** | **steady** = temporary fault, will retry automatically · **blinking** = locked out, needs RESET |
 | Level **MIN / 1-2 / 3-4** | which float is currently wet · a **blinking** level lamp = that float looks broken |
 | **ALARM** (panel) | blinks during an emergency |
+| **PRE-EMPTY** | flashes while a manual pre-empty drain is running, and for ~5 s after you press the button (to confirm the press) |
 
 **Remote signals**
 
@@ -56,6 +57,7 @@ keeps failing it is **locked out** until someone investigates and presses RESET.
 - **Manual–Off–Auto** selector per pump (see §6).
 - **SILENCE** button — mutes the **siren**; the beacon and lamps stay on.
 - **RESET** button — clears faults and re-enables a locked-out pump (after you've fixed the cause).
+- **PRE-EMPTY** button — drains the tank down now to make room before a storm (see §6).
 
 ---
 
@@ -66,8 +68,8 @@ keeps failing it is **locked out** until someone investigates and presses RESET.
 - 3 float switches (normally-open, closing on water rise). The 3/4 float is optional for now.
 - 2 × **Seneca T201** current transducers (4-20 mA output), one clamped on each pump's supply.
 - 2 × **precision burden resistors** (≈ 500 Ω, 0.1 %) — one per 4-20 mA loop (see §5.3).
-- 24 V indicator lamps, a 24 V beacon (self-flashing type recommended) and a siren.
-- MOA (Manual, Off, Auto) selectors and two momentary push-buttons (Silence, Reset).
+- 24 V indicator lamps (incl. a PRE-EMPTY lamp), a 24 V beacon (self-flashing type recommended) and a siren.
+- MOA (Manual, Off, Auto) selectors and three momentary push-buttons (Silence, Reset, Pre-empty).
 
 ---
 
@@ -92,6 +94,7 @@ Wire to the CONTROLLINO MAXI terminals as below (matches the firmware pin map).
 | `D2` / `D3` | Pump 1 / Pump 2 FAULT |
 | `D4` / `D5` / `D6` | Level MIN / 1-2 / 3-4 |
 | `D7` | Panel ALARM |
+| `D8` | PRE-EMPTY active (flashing) |
 
 **Inputs**
 
@@ -103,7 +106,9 @@ Wire to the CONTROLLINO MAXI terminals as below (matches the firmware pin map).
 | `A6` | Reset button |
 | `A7` / `A8` | Pump 1 MANUAL / AUTO (from its MOA selector) |
 | `A9` / `IN0` | Pump 2 MANUAL / AUTO (from its MOA selector) |
-| `IN1` | spare |
+| `IN1` | Pre-empty button |
+
+All 12 inputs are now used — there are **no spare inputs** left.
 
 ---
 
@@ -167,6 +172,22 @@ Each pump has a 3-position selector:
 - **OFF** — that pump is disabled and will not run, even in an emergency.
 - **MANUAL** — force-runs that pump now, ignoring the floats (for testing/priming). The single-pump interlock still applies; if both are set to MANUAL, only Pump 1 runs.
 
+### Pre-emptying before a storm
+Press the **PRE-EMPTY** button (pumps in AUTO) to drain the tank down to the MIN
+level **now**, even though the water hasn't reached the 1/2 start float — this
+frees up buffer capacity before heavy rain.
+
+- The **PRE-EMPTY lamp flashes** to confirm the press was accepted. If there's
+  water to pump, a pump runs and drains to MIN, then stops normally (and the next
+  cycle alternates as usual). If the tank is already low, nothing pumps but the
+  lamp still flashes for ~5 s so you know the button worked.
+- It's fully monitored (same fault/alarm protection as a normal cycle) and never
+  runs dry (it stops at MIN).
+- To cancel a standing request, press **RESET**. (A drain already in progress
+  finishes down to MIN — that's harmless and is the point.)
+- If both pumps are OFF or unavailable, nothing runs; the flashing lamp only
+  means the request was registered.
+
 ---
 
 ## 7. Commissioning checklist
@@ -181,7 +202,8 @@ Each pump has a 3-position selector:
 4. **Test each pump in MANUAL**, confirm the correct relay pulls in, the RUN lamp lights, and the current reads sensibly.
 5. **Test AUTO**: raise the floats by manual (or fill the sump) and confirm a pump starts at 1/2 and stops at MIN, and that the **lead pump alternates** each cycle.
 6. **Test the alarm**: trip the 3/4 float (or its input) and confirm beacon **and** siren; press **SILENCE** and confirm the siren stops but the beacon stays.
-7. Leave both selectors at **AUTO**.
+7. **Test PRE-EMPTY**: with water between MIN and 1/2, press the button → the PRE-EMPTY lamp flashes and a pump drains to MIN then stops. Press it again with the tank empty → no pump, but the lamp still flashes ~5 s.
+8. Leave both selectors at **AUTO**.
 
 ---
 

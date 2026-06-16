@@ -25,13 +25,15 @@ static const PompePins TP = {
     /* lampHalf   */ 29,
     /* lampHigh   */ 30,
     /* lampAlarm  */ 31,
+    /* lampPreEmpty*/ 32,
     /* curPin     */ {0, 1},
     /* floatMin   */ 2,
     /* floatHalf  */ 3,
     /* floatHigh  */ 4,
     /* silence    */ 5,
     /* reset      */ 6,
-    /* manual       */ {7, 9},
+    /* preEmptyBtn*/ 11,
+    /* manual     */ {7, 9},
     /* autom      */ {8, 10}};
 
 enum { OFF = 0, MANUAL = 1, AUTO = 2 };
@@ -364,6 +366,73 @@ static void t_level_lamps_mirror_floats()
   EXPECT(g_dout[TP.lampHigh] == 0, "3/4 lamp off");
 }
 
+// sample the pre-empty lamp over `ms` and report whether it ever toggled
+static bool preEmptyLampFlashed(PompeManager &m, unsigned long ms)
+{
+  bool flashed = false;
+  int base = g_dout[TP.lampPreEmpty];
+  for (unsigned long t = 0; t < ms; t += 20)
+  {
+    g_millis += 20;
+    m.check();
+    if (g_dout[TP.lampPreEmpty] != base)
+      flashed = true;
+  }
+  return flashed;
+}
+
+static void t_preempty_drains_to_min()
+{
+  PompeManager m(TP);
+  boot(m);
+  setFloats(1, 0, 0); // water above MIN but below the 1/2 float → no normal demand
+  run(m, 2600);
+  EXPECT(active() == -1, "no auto start below the 1/2 float");
+  press(m, TP.preEmptyBtn);
+  run(m, 800);
+  EXPECT(active() == 0, "PRE-EMPTY starts a pump even below the 1/2 float");
+  EXPECT(preEmptyLampFlashed(m, 1200), "pre-empty lamp flashes while the cycle runs");
+  setFloats(0, 0, 0); // drained below MIN
+  run(m, 2600);
+  EXPECT(active() == -1, "pre-empty drains to MIN then stops");
+  run(m, 5000, 200); // let the 5 s ack window expire
+  EXPECT(g_dout[TP.lampPreEmpty] == 0, "pre-empty lamp off after drain + ack window");
+  run(m, 2000);
+  EXPECT(active() == -1, "does not restart after a completed pre-empty");
+}
+
+static void t_preempty_ack_blink_when_empty()
+{
+  PompeManager m(TP);
+  boot(m); // tank empty (all floats low)
+  press(m, TP.preEmptyBtn);
+  EXPECT(preEmptyLampFlashed(m, 2000), "lamp blinks to acknowledge the press even with an empty tank");
+  EXPECT(active() == -1, "no pump runs when there's nothing to drain");
+  run(m, 6000, 200); // ack window (~5 s) expires
+  EXPECT(g_dout[TP.lampPreEmpty] == 0, "ack blink stops after ~5 s");
+  EXPECT(active() == -1, "still no pump");
+}
+
+static void t_preempty_reset_aborts()
+{
+  PompeManager m(TP);
+  boot(m);
+  setFloats(1, 0, 0); // water above MIN, below 1/2
+  run(m, 2600);
+  setMode(0, OFF);
+  setMode(1, OFF); // disable both so the request can't run a pump yet
+  run(m, 300);
+  press(m, TP.preEmptyBtn); // request latches but nothing can run
+  run(m, 500);
+  EXPECT(active() == -1, "both pumps OFF → pre-empty cannot run yet");
+  press(m, TP.reset); // abort the standing request
+  run(m, 300);
+  setMode(0, AUTO);
+  setMode(1, AUTO); // pumps available again
+  run(m, 2000);
+  EXPECT(active() == -1, "RESET cleared the pre-empty request → no pump starts");
+}
+
 // ----------------------------------------------------------------- runner
 #define RUN(fn)            \
   do                       \
@@ -390,6 +459,9 @@ int main()
   RUN(t_silence_mutes_siren_only);
   RUN(t_hoa_manual_and_interlock);
   RUN(t_off_disables);
+  RUN(t_preempty_drains_to_min);
+  RUN(t_preempty_ack_blink_when_empty);
+  RUN(t_preempty_reset_aborts);
   RUN(t_level_lamps_mirror_floats);
 
   printf("\n%d checks, %d failures\n", g_checks, g_failures);

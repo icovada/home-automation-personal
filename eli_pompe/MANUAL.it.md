@@ -47,6 +47,7 @@ continua a guastarsi viene **bloccata** finché qualcuno non interviene e preme 
 | Pompa 1 / Pompa 2 **GUASTO** (FAULT) | **fissa** = guasto temporaneo, ritenterà automaticamente · **lampeggiante** = bloccata, richiede RIPRISTINO (RESET) |
 | Livello **MIN / 1-2 / 3-4** | quale galleggiante è attualmente bagnato · una spia di livello **lampeggiante** = quel galleggiante sembra guasto |
 | **ALLARME** (ALARM, quadro) | lampeggia durante un'emergenza |
+| **PRE-SVUOTAMENTO** (PRE-EMPTY) | lampeggia mentre è in corso uno svuotamento manuale di pre-svuotamento, e per ~5 s dopo aver premuto il pulsante (per confermare la pressione) |
 
 **Segnali remoti**
 
@@ -58,6 +59,7 @@ continua a guastarsi viene **bloccata** finché qualcuno non interviene e preme 
 - Selettore **Manuale–Spento–Auto** per ciascuna pompa (vedi §6).
 - Pulsante **SILENZIA (SILENCE)** — disattiva la **sirena**; il lampeggiante e le spie restano accesi.
 - Pulsante **RIPRISTINO (RESET)** — cancella i guasti e riabilita una pompa bloccata (dopo aver risolto la causa).
+- Pulsante **PRE-SVUOTAMENTO (PRE-EMPTY)** — svuota subito il pozzetto per fare spazio prima di un temporale (vedi §6).
 
 ---
 
@@ -68,8 +70,8 @@ continua a guastarsi viene **bloccata** finché qualcuno non interviene e preme 
 - 3 galleggianti (normalmente aperti, che chiudono al salire dell'acqua). Il galleggiante 3/4 per ora è opzionale.
 - 2 × trasduttori di corrente **Seneca T201** (uscita 4-20 mA), uno montato su ciascuna alimentazione delle pompe.
 - 2 × **resistenze di shunt (burden) di precisione** (≈ 500 Ω, 0,1 %) — una per ciascun anello 4-20 mA (vedi §5.3).
-- Spie a 24 V, un lampeggiante a 24 V (consigliato di tipo autolampeggiante) e una sirena.
-- Selettori MOA (Manuale, Spento, Auto) e due pulsanti a impulso (Silenzia, Ripristino).
+- Spie a 24 V (compresa una spia PRE-SVUOTAMENTO), un lampeggiante a 24 V (consigliato di tipo autolampeggiante) e una sirena.
+- Selettori MOA (Manuale, Spento, Auto) e tre pulsanti a impulso (Silenzia, Ripristino, Pre-svuotamento).
 
 ---
 
@@ -94,6 +96,7 @@ Cablare ai morsetti del CONTROLLINO MAXI come indicato di seguito (corrisponde a
 | `D2` / `D3` | GUASTO (FAULT) Pompa 1 / Pompa 2 |
 | `D4` / `D5` / `D6` | Livello MIN / 1-2 / 3-4 |
 | `D7` | ALLARME (ALARM) quadro |
+| `D8` | PRE-SVUOTAMENTO (PRE-EMPTY) attivo (lampeggiante) |
 
 **Ingressi**
 
@@ -105,7 +108,9 @@ Cablare ai morsetti del CONTROLLINO MAXI come indicato di seguito (corrisponde a
 | `A6` | Pulsante Ripristino |
 | `A7` / `A8` | Pompa 1 MANUALE / AUTO (dal suo selettore MOA) |
 | `A9` / `IN0` | Pompa 2 MANUALE / AUTO (dal suo selettore MOA) |
-| `IN1` | di riserva |
+| `IN1` | Pulsante Pre-svuotamento |
+
+Tutti i 12 ingressi sono ora utilizzati — **non restano ingressi liberi**.
 
 ---
 
@@ -169,6 +174,22 @@ Ciascuna pompa ha un selettore a 3 posizioni:
 - **SPENTO (OFF)** — quella pompa è disabilitata e non funzionerà, nemmeno in emergenza.
 - **MANUALE (MANUAL)** — fa funzionare subito quella pompa, ignorando i galleggianti (per test/adescamento). L'interblocco a pompa singola vale comunque; se entrambe sono su MANUALE, funziona solo la Pompa 1.
 
+### Pre-svuotamento prima di un temporale
+Premi il pulsante **PRE-SVUOTAMENTO (PRE-EMPTY)** (pompe in AUTO) per svuotare ora il pozzetto fino al livello
+MIN **subito**, anche se l'acqua non ha raggiunto il galleggiante di avvio 1/2 — così si
+libera capacità di riserva prima di una pioggia intensa.
+
+- La **spia PRE-SVUOTAMENTO lampeggia** per confermare che la pressione è stata accettata. Se c'è
+  acqua da pompare, una pompa funziona e svuota fino a MIN, poi si ferma normalmente (e il ciclo
+  successivo si alterna come al solito). Se il pozzetto è già basso, nulla pompa ma la
+  spia lampeggia comunque per ~5 s così sai che il pulsante ha funzionato.
+- È completamente monitorato (stessa protezione da guasto/allarme di un ciclo normale) e non funziona mai
+  a secco (si ferma a MIN).
+- Per annullare una richiesta in attesa, premi **RIPRISTINO (RESET)**. (Uno svuotamento già in corso
+  termina fino a MIN — è innocuo ed è proprio lo scopo.)
+- Se entrambe le pompe sono su SPENTO o non disponibili, nulla funziona; la spia lampeggiante
+  significa solo che la richiesta è stata registrata.
+
 ---
 
 ## 7. Lista di controllo per la messa in servizio
@@ -183,7 +204,8 @@ Ciascuna pompa ha un selettore a 3 posizioni:
 4. **Prova ciascuna pompa in MANUALE (MANUAL)**, verifica che il relè corretto si ecciti, che la spia MARCIA (RUN) si accenda e che la corrente sia letta in modo sensato.
 5. **Prova l'AUTO**: alza i galleggianti manualmente (o riempi il pozzetto) e verifica che una pompa parta a 1/2 e si fermi a MIN, e che la **pompa di testa si alterni** ad ogni ciclo.
 6. **Prova l'allarme**: fai scattare il galleggiante 3/4 (o il suo ingresso) e verifica lampeggiante **e** sirena; premi **SILENZIA (SILENCE)** e verifica che la sirena si fermi ma il lampeggiante resti acceso.
-7. Lascia entrambi i selettori su **AUTO**.
+7. **Prova il PRE-SVUOTAMENTO (PRE-EMPTY)**: con acqua tra MIN e 1/2, premi il pulsante → la spia PRE-SVUOTAMENTO lampeggia e una pompa svuota fino a MIN poi si ferma. Premilo di nuovo con il pozzetto vuoto → nessuna pompa, ma la spia lampeggia comunque per ~5 s.
+8. Lascia entrambi i selettori su **AUTO**.
 
 ---
 

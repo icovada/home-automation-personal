@@ -13,6 +13,7 @@ the code. For wiring, calibration and day-to-day operation see
 - Two **Seneca T201** clamp transducers (4-20 mA, 0-10 A) measure each pump's current to tell whether it's actually pumping.
 - A stuck/failed pump is detected and the controller **switches to the other pump**, retries the bad one after a cooldown, and **locks it out** after repeated failures.
 - A two-tier local alarm (beacon + siren) signals problems; no network needed.
+- A **PRE-EMPTY button** drains the tank to MIN on demand (storm prep), even below the 1/2 float; a dedicated lamp flashes to confirm.
 
 ## Files
 
@@ -54,14 +55,15 @@ window to kill ripple; buttons/MOA use 50 ms and expose a rising edge).
 ### `check()` flow
 
 1. **Read & debounce** floats, MOA selectors, buttons, and the per-pump current.
-2. **RESET** button → clear all faults, lockouts, cooldowns and the silence latch.
+1b. **PRE-EMPTY** button → latch a drain-to-MIN request if water is above MIN; always start a 5 s lamp-ack window.
+2. **RESET** button → clear all faults, lockouts, cooldowns, the silence latch, and any pre-empty request.
 3. **Cooldown expiry** → re-enable a temporarily-faulted pump (locked-out pumps stay down).
 4. **OFF** (MOA) → make sure that pump isn't running.
 5. **MANUAL** (MOA) → force that pump on (interlock still enforced; if both are in manual, pump 1 wins). Auto/fault logic is bypassed.
 6. **AUTO** control:
    - decide when to **stop** (see "Stop logic");
    - if running and past the startup grace, run the **fault checks**;
-   - if idle and the 1/2 float is up, **start** the lead pump (or the other if the lead is unavailable).
+   - if idle and the 1/2 float is up **or a pre-empty is requested**, **start** the lead pump (or the other if the lead is unavailable).
 7. **Alarm evaluation** (emergency tier) + high-water emergency override.
 8. **Drive outputs** — pump relays are written purely from `activePump`, so "both off or exactly one on" holds *by construction*.
 9. Periodic **status** line on Serial (115200) for field debugging.
@@ -127,12 +129,15 @@ Defined in [`eli_pompe.ino`](eli_pompe.ino).
 | Pump 1 / 2 FAULT lamp | `D2` / `D3` | 24 V out |
 | Level MIN / 1-2 / 3-4 lamp | `D4` / `D5` / `D6` | 24 V out |
 | Panel ALARM lamp (blinks) | `D7` | 24 V out |
+| PRE-EMPTY active lamp (flashes) | `D8` | 24 V out |
 | Pump 1 / 2 amp clamp (T201) | `A0` / `A1` | analog in (4-20 mA via burden R) |
 | Float MIN / 1-2 / 3-4 | `A2` / `A3` / `A4` | digital in |
 | Silence / Reset button | `A5` / `A6` | digital in |
 | Pump 1 MANUAL / AUTO | `A7` / `A8` | digital in |
 | Pump 2 MANUAL / AUTO | `A9` / `IN0` | digital in |
-| spare | `IN1` | — |
+| PRE-EMPTY button | `IN1` | digital in |
+
+All 12 inputs (A0–A9 + IN0/IN1) are now used — **no spare inputs remain**.
 
 Floats/buttons are **active-high** (contact closes to +24 V). MOA is a maintained
 3-position selector wired as two inputs per pump (Manual / Auto; centre Off = both open).
@@ -154,6 +159,7 @@ All at the top of [`pompe.h`](pompe.h). Times in ms.
 | `FAULT_COOLDOWN_MS` | 600000 | auto-retry delay (10 min) |
 | `MAX_CONSECUTIVE_FAULTS` | 3 | faults before permanent lockout |
 | `ALARM_BLINK_MS` | 500 | blink half-period |
+| `PREEMPTY_ACK_MS` | 5000 | pre-empty lamp blink window after a button press |
 | `AMP_SPAN_A` | 10.0 | full-scale amps at 20 mA |
 | `NORMAL_AMP_MIN` / `MAX` | 2.0 / 8.0 | healthy running band (A) |
 | `SENSOR_FAULT_AMPS` | -1.0 | below this ⇒ broken loop |

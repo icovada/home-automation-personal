@@ -17,7 +17,7 @@ make          # builds and runs
 Expected tail:
 
 ```
-64 checks, 0 failures
+79 checks, 0 failures
 ALL TESTS PASSED
 ```
 
@@ -40,6 +40,7 @@ the same time.
 - **high-water override** runs a pump even during a cooldown
 - **silence** mutes the siren only; the beacon stays on
 - **Manual-Off-Auto**: manual run, both-manual interlock, OFF disables
+- **pre-empty**: drains to MIN below the 1/2 float; ack-blink even when the tank is already empty; RESET aborts
 - level lamps mirror the floats
 
 ## Important: this folder is invisible to the Arduino build

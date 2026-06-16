@@ -44,6 +44,7 @@ identical one. **Keep this committed to the repo and printed in the drawer.**
 | Pump FAULT lamps | 24 V, ___ (red?) | 2 | `D2` / `D3` |
 | Level lamps (MIN/1-2/3-4) | 24 V, ___ | 3 | `D4` / `D5` / `D6` |
 | Panel ALARM lamp | 24 V, ___ (red?) | 1 | `D7`, blinks |
+| PRE-EMPTY lamp | 24 V, ___ | 1 | `D8`, flashes while a pre-empty drain runs / ~5 s after a press |
 | Remote beacon | 24 V, **self-flashing** | 1 | `R2`. Self-flashing so the relay stays steady (MANUAL §5.4). |
 | Siren / sounder | 24 V, ___ | 1 | `R3` (separate relay so SILENCE mutes it). |
 
@@ -52,7 +53,7 @@ identical one. **Keep this committed to the repo and printed in the drawer.**
 | Item | Spec / model (FILL IN) | Qty | Notes |
 |------|------------------------|-----|-------|
 | MOA selector switch | 3-position **maintained** | 2 | Manual / Off / Auto, wired as 2 inputs/pump (A7+A8, A9+IN0). |
-| Push-buttons | momentary, **normally-open** | 2 | SILENCE (`A5`), RESET (`A6`). |
+| Push-buttons | momentary, **normally-open** | 3 | SILENCE (`A5`), RESET (`A6`), PRE-EMPTY (`IN1`). |
 | Terminal blocks, wiring, ferrules | — | — | |
 
 ---

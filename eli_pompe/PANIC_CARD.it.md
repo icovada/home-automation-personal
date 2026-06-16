@@ -23,14 +23,16 @@ turno. Le tiene d'occhio e ti avvisa se qualcosa non va. Di norma non devi fare
 | **Spia GUASTO pompa FISSA** | Quella pompa è scattata; riproverà in automatico. | Tienila d'occhio. Se continua a succedere, chiama l'idraulico. |
 | **Spia GUASTO pompa LAMPEGGIANTE** | Quella pompa si è arresa (troppi guasti). | Fai riparare la pompa, poi premi **RIPRISTINO (RESET)**. |
 | Una **spia livello acqua LAMPEGGIANTE** | Un galleggiante sembra rotto. | Chiama l'idraulico; intanto il sistema continua a funzionare. |
+| **Spia PRE-SVUOTAMENTO che LAMPEGGIA** | Qualcuno ha premuto PRE-SVUOTAMENTO (PRE-EMPTY); il pozzetto si sta svuotando apposta. | Normale. Niente da fare. |
 | Niente acceso, pompe silenziose | Tutto normale. | Niente. |
 
 ---
 
-## I due pulsanti
+## I tre pulsanti
 
 - **SILENZIA (SILENCE)** — spegne la **sirena**. La luce rossa resta accesa. Usalo per poter ragionare; **non** risolve niente.
 - **RIPRISTINO (RESET)** — premilo **dopo che una pompa è stata riparata** per rimetterla in servizio. Se il problema non è risolto, andrà semplicemente di nuovo in guasto.
+- **PRE-SVUOTAMENTO (PRE-EMPTY)** — premilo **prima di un grosso temporale** per svuotare adesso il pozzetto e fare margine. La **spia PRE-SVUOTAMENTO lampeggia** per confermare; una pompa funziona finché il pozzetto non è basso, poi si ferma da sola. Si può usare in qualsiasi momento senza rischi.
 
 ## I selettori (uno per pompa) — lasciali su **AUTO**
 - **AUTO** = normale (lascialo qui).

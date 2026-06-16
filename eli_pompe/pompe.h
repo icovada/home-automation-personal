@@ -22,6 +22,12 @@
  * without MIN → MIN float broken (alarm + the running pump switches to a drain
  * timer since it can no longer trust MIN to tell it when to stop).
  *
+ * Pre-empty (storm pre-drain): a button drains the tank to MIN now, even below
+ * the 1/2 float, to free up buffer capacity before bad weather. It's a second
+ * "demand" source (never runs dry: only engages while MIN is wet, stops at MIN).
+ * A dedicated lamp flashes while engaged, and for PREEMPTY_ACK_MS after any
+ * press to confirm the press registered.
+ *
  * Self-contained on purpose: no network / MQTT, only <Controllino.h> at the
  * sketch level. All timing is millis()-based; nothing blocks the loop.
  */
@@ -40,6 +46,7 @@
 #define FAULT_COOLDOWN_MS 600000UL    // auto-retry a faulted pump after this (10 min)
 #define MAX_CONSECUTIVE_FAULTS  3     // consecutive faults before a pump locks out (manual RESET required)
 #define ALARM_BLINK_MS       500UL    // panel alarm-lamp blink half-period
+#define PREEMPTY_ACK_MS     5000UL    // pre-empty button: confirmation-blink window after a press
 #define STATUS_PRINT_MS    10000UL    // periodic status line on Serial
 
 // Current monitoring — Seneca T201: 4-20 mA over a 0-10 A span.
@@ -71,9 +78,11 @@ struct PompePins
   uint8_t faultLamp[2];               // per-pump FAULT indicator (24 V)
   uint8_t lampMin, lampHalf, lampHigh;// level indicators (24 V)
   uint8_t lampAlarm;                  // panel alarm lamp (24 V, blinks)
+  uint8_t lampPreEmpty;               // pre-empty active lamp (24 V, flashes)
   uint8_t curPin[2];                  // analog inputs from the T201 amp clamps
   uint8_t floatMin, floatHalf, floatHigh; // float switch inputs
   uint8_t silence, reset;             // momentary buttons
+  uint8_t preEmptyBtn;                // momentary button: pre-empty the tank now
   uint8_t manual[2], autom[2];        // MOA selector: 2 inputs/pump (Manual / Auto, neither = Off)
 };
 
@@ -127,7 +136,7 @@ class PompeManager
   PompePins pins;
 
   DebInput minFloat, halfFloat, highFloat;
-  DebInput silenceBtn, resetBtn;
+  DebInput silenceBtn, resetBtn, preEmptyInput;
   DebInput manualInput[2], autoInput[2];
 
   PumpMode mode[2] = {MODE_OFF, MODE_OFF};
@@ -153,6 +162,9 @@ class PompeManager
   bool prevMinBroken = false;
   bool timerMode = false;       // this run can't trust MIN → stop on a drain timer instead
   unsigned long drainStart = 0; // when the 1/2 float opened during a timer-mode run
+  bool preEmpty = false;        // storm pre-drain requested → drain to MIN even below the 1/2 float
+  bool preEmptyAck = false;     // confirmation-blink window active after a button press
+  unsigned long preEmptyAckStart = 0;
   bool blinkState = false;
   unsigned long lastBlink = 0;
   unsigned long lastStatus = 0;
@@ -174,12 +186,14 @@ public:
     pinMode(pins.lampHalf, OUTPUT);    digitalWrite(pins.lampHalf, LOW);
     pinMode(pins.lampHigh, OUTPUT);    digitalWrite(pins.lampHigh, LOW);
     pinMode(pins.lampAlarm, OUTPUT);   digitalWrite(pins.lampAlarm, LOW);
+    pinMode(pins.lampPreEmpty, OUTPUT); digitalWrite(pins.lampPreEmpty, LOW);
 
     minFloat.begin(pins.floatMin);
     halfFloat.begin(pins.floatHalf);
     highFloat.begin(pins.floatHigh);
     silenceBtn.begin(pins.silence, true); // buttons close to +24 V
     resetBtn.begin(pins.reset, true);
+    preEmptyInput.begin(pins.preEmptyBtn, true);
     for (int p = 0; p < 2; p++)
     {
       manualInput[p].begin(pins.manual[p], true);
@@ -210,6 +224,7 @@ public:
 
     silenceBtn.update(now, BTN_DEBOUNCE_MS);
     resetBtn.update(now, BTN_DEBOUNCE_MS);
+    preEmptyInput.update(now, BTN_DEBOUNCE_MS);
     for (int p = 0; p < 2; p++)
     {
       manualInput[p].update(now, BTN_DEBOUNCE_MS);
@@ -218,6 +233,28 @@ public:
       else if (autoInput[p].stable) mode[p] = MODE_AUTO;
       else                       mode[p] = MODE_OFF;
     }
+
+    // --- 1b. PRE-EMPTY button (storm pre-drain) ---
+    // Every press flashes the lamp for PREEMPTY_ACK_MS to confirm it registered;
+    // it only engages a drain cycle if there's water above MIN to pump.
+    if (preEmptyInput.justRose)
+    {
+      preEmptyAck = true;
+      preEmptyAckStart = now;
+      if (fMin)
+      {
+        preEmpty = true;
+        Serial.println(F("PRE-EMPTY requested"));
+      }
+      else
+      {
+        Serial.println(F("PRE-EMPTY: nothing to drain (tank already at/below MIN)"));
+      }
+    }
+    if (!fMin)
+      preEmpty = false; // drained to MIN (or nothing to do) → request satisfied/void
+    if (preEmptyAck && (now - preEmptyAckStart) >= PREEMPTY_ACK_MS)
+      preEmptyAck = false;
 
     // --- 2. RESET button: clear faults / cooldowns / silence ---
     if (resetBtn.justRose)
@@ -232,6 +269,7 @@ public:
         faultUntil[p] = 0;
       }
       alarmSilenced = false;
+      preEmpty = false; // RESET also aborts an in-progress pre-empty
       Serial.println(F("RESET: faults cleared"));
     }
 
@@ -347,8 +385,8 @@ public:
         }
       }
 
-      // demand = water reached the 1/2 float
-      if (activePump == -1 && fHalf)
+      // demand = water reached the 1/2 float, OR a pre-empty drain was requested
+      if (activePump == -1 && (fHalf || preEmpty))
       {
         int p = pickPump(false);
         if (p != -1)
@@ -402,8 +440,10 @@ public:
     }
 
     // --- 8. drive outputs (relays derived from activePump → interlock by construction) ---
-    // advance the shared blink timer while an alarm is active, a pump is locked out, or a float is faulted
-    if (alarmActive || lockedOut[0] || lockedOut[1] || minFloatBroken)
+    // pre-empty lamp flashes while a cycle is engaged or during the post-press ack window
+    bool preEmptyLamp = preEmpty || preEmptyAck;
+    // advance the shared blink timer while anything that blinks is active
+    if (alarmActive || lockedOut[0] || lockedOut[1] || minFloatBroken || preEmptyLamp)
     {
       if (now - lastBlink >= ALARM_BLINK_MS)
       {
@@ -440,6 +480,7 @@ public:
     digitalWrite(pins.lampAlarm, alarmActive ? (blinkState ? HIGH : LOW) : LOW);  // panel lamp: emergency only, blinks
     digitalWrite(pins.beaconRelay, (alarmActive || warning) ? HIGH : LOW);        // beacon: warning OR emergency
     digitalWrite(pins.sirenRelay, (alarmActive && !alarmSilenced) ? HIGH : LOW);  // siren: emergency only, mutable
+    digitalWrite(pins.lampPreEmpty, preEmptyLamp ? (blinkState ? HIGH : LOW) : LOW); // pre-empty: flashes when engaged / acknowledged
 
     // --- 9. periodic status ---
     if (now - lastStatus >= STATUS_PRINT_MS)
@@ -549,6 +590,8 @@ private:
     Serial.print(retryCount[0]); Serial.print('/'); Serial.print(retryCount[1]);
     Serial.print(F(" timerMode="));
     Serial.print(timerMode);
+    Serial.print(F(" preEmpty="));
+    Serial.print(preEmpty);
     Serial.print(F(" A="));
     Serial.print(readAmps(0), 1); Serial.print('/'); Serial.print(readAmps(1), 1);
     Serial.print(F(" alarm="));
